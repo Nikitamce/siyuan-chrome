@@ -1120,9 +1120,8 @@ const siyuanSendUpload = async (tempElement, tabId, srcUrl, type, article, href,
         // 处理使用 data-original 属性的情况 https://github.com/siyuan-note/siyuan/issues/11826
         let dataOriginal = item.getAttribute("data-original");
         if (dataOriginal && !dataOriginal.startsWith("/")) {
-            if (!src || !src.endsWith(".gif")) {
-                src = dataOriginal;
-            }
+            const isGifSource = value => /\.gif(?:[?#]|$)/i.test(value || "");
+            if (isGifSource(dataOriginal) || !isGifSource(src)) src = dataOriginal;
         }
 
         if ("https:" === window.location.protocol) {
@@ -1134,9 +1133,9 @@ const siyuanSendUpload = async (tempElement, tabId, srcUrl, type, article, href,
             item.setAttribute("src", src);
         }
 
-        if (-1 < itemClassName.indexOf("ztext-gif") && -1 < src.indexOf("zhimg.com")) {
-            // 处理知乎动图
-            src = src.replace(".jpg", ".webp");
+        if (itemClassName.includes("ztext-gif") && src.includes("zhimg.com")) {
+            // Zhihu GIF thumbnails use JPG URLs; request the animated source.
+            src = src.replace(/\.jpg(?=[?#]|$)/i, ".webp");
         }
 
         srcList.push(src);
@@ -1188,9 +1187,11 @@ const siyuanSendUpload = async (tempElement, tabId, srcUrl, type, article, href,
         }
         const image = await response.blob();
         const data = await siyuanConvertBlobToBase64(image);
+        const contentType = (response.headers?.get("content-type") || image.type || "")
+            .split(";")[0].trim().toLowerCase();
         files[escape(src)] = {
-            type: image.type,
-            data: data,
+            type: image.type || contentType || "application/octet-stream",
+            data,
         };
 
         filesSize += data.length;
@@ -1387,44 +1388,75 @@ function siyuanCreateFullDOMClone() {
     return clonedDoc;
 }
 function siyuanGetConversationAdapter() {
-    const host=location.hostname.toLowerCase();
-    if(host==="gemini.google.com") return {
-        name:"Gemini",turns:Array.from(document.querySelectorAll("user-query,model-response")),
-        role:element=>element.matches("user-query")?"user":"assistant"
-    };
-    if(host==="chatgpt.com" || host==="chat.openai.com") return {
-        name:"ChatGPT",turns:Array.from(document.querySelectorAll("[data-message-author-role]")),
-        role:element=>element.getAttribute("data-message-author-role")==="user"?"user":"assistant"
-    };
-    if(host==="claude.ai") return {
-        name:"Claude",turns:Array.from(document.querySelectorAll('[data-testid*="user-message"],[data-testid*="assistant-message"],[data-testid="chat-message"]')),
-        role:element=>/user/i.test(element.getAttribute("data-testid")||"")?"user":(/assistant/i.test(element.getAttribute("data-testid")||"")?"assistant":"")
-    };
+    const host = location.hostname.toLowerCase();
+    if (host === "gemini.google.com") {
+        const turns = Array.from(document.querySelectorAll("user-query, model-response"));
+        if (!turns.length) return null;
+        return {
+            name: "Gemini", turns,
+            role: element => element.matches("user-query") ? "user" : "assistant",
+            content: element => element.matches("user-query")
+                ? element.querySelector(".query-text, .query-content, [class*='query-text']") || element
+                : element.querySelector(".response-content, .markdown, [class*='response-content']") || element,
+        };
+    }
+    if (host === "chatgpt.com" || host === "chat.openai.com") {
+        const turns = Array.from(document.querySelectorAll("[data-message-author-role]"));
+        if (!turns.length) return null;
+        return {
+            name: "ChatGPT", turns,
+            role: element => {
+                const role = element.getAttribute("data-message-author-role");
+                return role === "user" ? "user" : role === "assistant" ? "assistant" : "";
+            },
+            content: element => element.querySelector(".markdown, [data-message-content], .text-message") || element,
+        };
+    }
+    if (host === "claude.ai") {
+        const turns = Array.from(document.querySelectorAll('[data-testid*="user-message"], [data-testid*="assistant-message"], [data-testid="chat-message"]'));
+        if (!turns.length) return null;
+        return {
+            name: "Claude", turns,
+            role: element => {
+                const id = element.getAttribute("data-testid") || "";
+                if (/user/i.test(id)) return "user";
+                if (/assistant/i.test(id)) return "assistant";
+                return element.getAttribute("data-message-author-role") || "";
+            },
+            content: element => element.querySelector(".font-claude-message, .prose, [class*='message-content']") || element,
+        };
+    }
     return null;
 }
+
 function siyuanExtractConversation() {
-    const adapter=siyuanGetConversationAdapter();
-    if(!adapter) return null;
-    const seen=new Set();
-    const turns=adapter.turns.map(element=>{
-        const role=adapter.role(element);
-        if(!role) return null;
-        const clone=element.cloneNode(true);
-        clone.querySelectorAll("button,[aria-label*='Copy'],[data-testid*='copy']").forEach(node=>node.remove());
-        const content=clone.innerHTML.trim();
-        const key=role+":"+content;
-        if(!content || seen.has(key)) return null;
-        seen.add(key);
-        return {role,content};
-    }).filter(Boolean);
-    if(!turns.length) return null;
-    const wrapper=document.createElement("div");
-    turns.forEach(turn=>{
-        const section=document.createElement("section");
-        const heading=document.createElement("h2");
-        heading.textContent=turn.role==="user"?siyuanGetMessage("conversation_user"):siyuanGetMessage("conversation_assistant");
-        const body=document.createElement("div");
-        body.innerHTML=turn.content;
+    const adapter = siyuanGetConversationAdapter();
+    if (!adapter) return null;
+    const turns = [];
+    for (const element of adapter.turns) {
+        const role = adapter.role(element);
+        if (role !== "user" && role !== "assistant") continue;
+        const parentTurn = element.parentElement?.closest(
+            "user-query, model-response, [data-message-author-role], [data-testid*='user-message'], [data-testid*='assistant-message'], [data-testid='chat-message']"
+        );
+        if (parentTurn && adapter.turns.includes(parentTurn)) continue;
+        const clone = adapter.content(element).cloneNode(true);
+        clone.querySelectorAll("button,[aria-label*='Copy'],[data-testid*='copy'],[data-testid*='feedback']").forEach(node => node.remove());
+        const html = clone.innerHTML.trim();
+        if (!html) continue;
+        turns.push({role,content:html});
+    }
+    if (!turns.length) return null;
+    const wrapper = document.createElement("div");
+    turns.forEach(turn => {
+        const section = document.createElement("section");
+        section.setAttribute("data-siyuan-conversation-role",turn.role);
+        const heading = document.createElement("h2");
+        heading.textContent = turn.role === "user"
+            ? siyuanGetMessage("conversation_user")
+            : siyuanGetMessage("conversation_assistant");
+        const body = document.createElement("div");
+        body.innerHTML = turn.content;
         section.append(heading,body);
         wrapper.appendChild(section);
     });
