@@ -13,7 +13,7 @@ test("Gemini turns preserve user/model roles, order, code and formulas", t => {
     const {window} = createContentDOM(t,html,{url:"https://gemini.google.com/app"});
     const result=window.extractConversation();
     assert.equal(result.adapter,"Gemini");
-    assert.deepEqual(result.turns.map(x=>x.role),["user","assistant","user","assistant"]);
+    assert.equal(Array.from(result.turns, x => x.role).join(","),"user,assistant,user,assistant");
     assert.match(result.element.textContent,/Why is the sky blue/);
     assert.match(result.element.textContent,/Blue light is scattered more/);
     assert.ok(result.element.querySelector("pre code"));
@@ -28,7 +28,7 @@ test("ChatGPT uses explicit author roles and keeps consecutive assistant turns",
       </main>`;
     const {window}=createContentDOM(t,html,{url:"https://chatgpt.com/c/test"});
     const result=window.extractConversation();
-    assert.deepEqual(result.turns.map(x=>x.role),["user","assistant","assistant"]);
+    assert.equal(Array.from(result.turns, x => x.role).join(","),"user,assistant,assistant");
     assert.equal(result.element.querySelectorAll("button").length,0);
     assert.match(result.element.textContent,/Continuation/);
 });
@@ -40,7 +40,7 @@ test("Claude adapter recognizes test-id role labels", t => {
         <div data-testid="assistant-message"><div class="font-claude-message"><p>Hello!</p></div></div>
       </main>`;
     const {window}=createContentDOM(t,html,{url:"https://claude.ai/chat/test"});
-    assert.deepEqual(window.extractConversation().turns.map(x=>x.role),["user","assistant"]);
+    assert.equal(Array.from(window.extractConversation().turns, x => x.role).join(","),"user,assistant");
 });
 
 test("unknown sites do not receive guessed conversation roles", t => {
