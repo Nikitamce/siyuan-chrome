@@ -277,12 +277,28 @@ function renderPopup(items) {
                 sendBtn.disabled = false;
                 return;
             }
-            chrome.tabs.sendMessage(tab.id, { func: "siyuanGetReadability", tabId: tab.id });
+            const mode = document.getElementById("captureMode")?.value || "article";
+            chrome.tabs.sendMessage(tab.id, { func: "siyuanGetReadability", tabId: tab.id, mode });
             setTimeout(() => {
                 sendBtn.disabled = false;
             }, 600);
         });
     });
+
+    root.insertAdjacentHTML(
+        "beforeend",
+        `<label class="popup__mode-select">
+            <span class="u-text-caption u-selectable">${t("capture_mode")}</span>
+            <select class="popup__select u-surface" id="captureMode">
+                <option value="article">${t("capture_article")}</option>
+                <option value="dom">${t("capture_dom")}</option>
+                <option value="conversation">${t("capture_conversation")}</option>
+            </select>
+        </label>`,
+    );
+    const captureMode = root.querySelector("#captureMode");
+    captureMode.value = items.captureMode || "article";
+    captureMode.addEventListener("change", () => chrome.storage.sync.set({captureMode: captureMode.value}));
 
     root.insertAdjacentHTML("beforeend", `<div class="popup__scroll"></div>`);
     const scroll = root.querySelector(".popup__scroll");

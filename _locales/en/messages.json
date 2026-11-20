@@ -199,5 +199,17 @@
   },
   "command_send_conversation": {
     "message": "Save conversation with speaker roles"
+  },
+  "capture_mode": {
+    "message": "Capture mode"
+  },
+  "capture_article": {
+    "message": "Main article (Readability)"
+  },
+  "capture_dom": {
+    "message": "Entire page DOM"
+  },
+  "capture_conversation": {
+    "message": "Chat conversation (speaker roles)"
   }
 }

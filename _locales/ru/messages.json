@@ -199,5 +199,17 @@
   },
   "command_send_conversation": {
     "message": "Сохранить диалог с разделением ролей"
+  },
+  "capture_mode": {
+    "message": "Режим сохранения"
+  },
+  "capture_article": {
+    "message": "Основная статья (Readability)"
+  },
+  "capture_dom": {
+    "message": "Весь DOM страницы"
+  },
+  "capture_conversation": {
+    "message": "Диалог (разделение по ролям)"
   }
 }
