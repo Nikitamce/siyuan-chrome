@@ -48,4 +48,4 @@ The fork adds three optional capture workflows without changing the default arti
 * **Entire page DOM**: saves the currently available DOM content rather than applying Readability article extraction. This does not automatically load infinite-scroll content that has not yet been rendered by the page.
 * **Conversation**: on supported Gemini, ChatGPT, and Claude pages, exports detected user and assistant turns with role headings. If a site layout is not recognized, the extension falls back to normal article extraction.
 
-The popup also includes a **Capture mode** selector. The default remains **Main article (Readability)**.
+The popup also includes a **Capture mode** selector. The default remains **Main article (Readability)**. The fork's regression suite is run by the GitHub Actions workflow **Web clipper regression tests**.
