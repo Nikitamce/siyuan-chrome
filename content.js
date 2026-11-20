@@ -28,8 +28,13 @@ const eventDispatcher = async (request, sender, sendResponse) => {
         return;
     }
 
+    if ("siyuanPickElement" === request.func) {
+        siyuanStartElementPicker(request.tabId);
+        return;
+    }
+
     if ("siyuanGetReadability" === request.func) {
-        siyuanGetReadability(request.tabId);
+        siyuanGetReadability(request.tabId, request.mode);
         return;
     }
 
@@ -1260,7 +1265,173 @@ const copyToClipboard = async (textToCopy) => {
     });
 };
 
-const siyuanGetReadability = async (tabId) => {
+
+const SIYUAN_DOM_PICKER_STYLE_ID = "siyuan-dom-picker-style";
+let siyuanPickerState = null;
+
+function siyuanStartElementPicker(tabId) {
+    siyuanStopElementPicker();
+    const style = document.createElement("style");
+    style.id = SIYUAN_DOM_PICKER_STYLE_ID;
+    style.textContent = `
+        #siyuan-dom-picker-banner{position:fixed;z-index:2147483647;top:12px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;max-width:min(92vw,720px);padding:10px 14px;border-radius:12px;color:#fff;background:#202124;box-shadow:0 8px 30px #0005;font:13px/1.4 system-ui,sans-serif}
+        #siyuan-dom-picker-banner button{border:0;border-radius:7px;padding:6px 10px;cursor:pointer;font:inherit;color:#202124;background:#fff}
+        #siyuan-dom-picker-banner button[data-primary]{color:#fff;background:#4285f4}
+        #siyuan-dom-picker-highlight{position:fixed;z-index:2147483646;pointer-events:none;border:2px solid #4285f4;background:#4285f422;border-radius:3px}
+    `;
+    (document.head || document.documentElement).appendChild(style);
+    const banner = document.createElement("div");
+    banner.id = "siyuan-dom-picker-banner";
+    banner.innerHTML = `<span>${siyuanGetMessage("picker_hint")}</span><button type="button" data-primary>${siyuanGetMessage("picker_capture")}</button><button type="button" data-cancel>${siyuanGetMessage("picker_cancel")}</button>`;
+    document.documentElement.appendChild(banner);
+    const highlight = document.createElement("div");
+    highlight.id = "siyuan-dom-picker-highlight";
+    highlight.hidden = true;
+    document.documentElement.appendChild(highlight);
+    const state = {style,banner,highlight,tabId,current:null,previousCursor:document.documentElement.style.cursor};
+    siyuanPickerState = state;
+    document.documentElement.style.cursor = "crosshair";
+    const update = element => {
+        const rect = element.getBoundingClientRect();
+        highlight.style.left = `${Math.max(0,rect.left)}px`;
+        highlight.style.top = `${Math.max(0,rect.top)}px`;
+        highlight.style.width = `${Math.max(0,rect.width)}px`;
+        highlight.style.height = `${Math.max(0,rect.height)}px`;
+        highlight.hidden = rect.width <= 0 || rect.height <= 0;
+    };
+    state.onMove = event => {
+        if (banner.contains(event.target)) return;
+        const element = event.composedPath().find(item =>
+            item instanceof Element && item !== document.documentElement && item !== document.body &&
+            !item.closest("#siyuan-dom-picker-banner") && !item.closest("#siyuan-dom-picker-highlight"));
+        if (!element) return;
+        state.current = element;
+        update(element);
+    };
+    state.onClick = event => {
+        if (banner.contains(event.target)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        if (state.current) void siyuanCaptureElement(state.current, tabId);
+    };
+    state.onKey = event => {
+        if (event.key === "Escape") {
+            event.preventDefault();
+            siyuanStopElementPicker();
+        } else if (event.key === "Enter" && state.current) {
+            event.preventDefault();
+            void siyuanCaptureElement(state.current, tabId);
+        } else if ((event.key === "ArrowUp" || event.key === "Backspace") && state.current?.parentElement) {
+            event.preventDefault();
+            state.current = state.current.parentElement;
+            update(state.current);
+        }
+    };
+    state.onScroll = () => { if (state.current) update(state.current); };
+    state.onResize = () => { if (state.current) update(state.current); };
+    banner.querySelector("[data-cancel]").addEventListener("click", siyuanStopElementPicker);
+    banner.querySelector("[data-primary]").addEventListener("click", () => {
+        if (state.current) void siyuanCaptureElement(state.current, tabId);
+        else void siyuanShowTipByKey("picker_select_first", 2500);
+    });
+    document.addEventListener("mousemove",state.onMove,true);
+    document.addEventListener("click",state.onClick,true);
+    document.addEventListener("keydown",state.onKey,true);
+    window.addEventListener("scroll",state.onScroll,true);
+    window.addEventListener("resize",state.onResize);
+    void siyuanShowTipByKey("picker_active",2500);
+}
+function siyuanStopElementPicker() {
+    const state = siyuanPickerState;
+    if (!state) return;
+    document.removeEventListener("mousemove",state.onMove,true);
+    document.removeEventListener("click",state.onClick,true);
+    document.removeEventListener("keydown",state.onKey,true);
+    window.removeEventListener("scroll",state.onScroll,true);
+    window.removeEventListener("resize",state.onResize);
+    state.style.remove();
+    state.banner.remove();
+    state.highlight.remove();
+    document.documentElement.style.cursor = state.previousCursor;
+    siyuanPickerState = null;
+}
+async function siyuanCaptureElement(element,tabId) {
+    if (!element?.isConnected || !siyuanPickerState) return;
+    siyuanStopElementPicker();
+    const settings = await siyuanEnsureClipReady();
+    if (!settings) return;
+    const clone = element.cloneNode(true);
+    siyuanCleanZhihu(clone,document.URL);
+    siyuanNormalizePictureImages(clone,document.baseURI);
+    const wrapper = document.createElement("div");
+    wrapper.appendChild(clone);
+    const article = {
+        title:(element.getAttribute("aria-label") || element.querySelector("h1,h2,h3,h4")?.textContent || document.title || "").trim(),
+        siteName:location.hostname,
+        excerpt:(element.innerText || element.textContent || "").trim().slice(0,240),
+    };
+    siyuanSendUpload(wrapper,tabId,undefined,"article",article,location.href,settings);
+}
+function siyuanCreateFullDOMClone() {
+    const clonedDoc = document.cloneNode(true);
+    clonedDoc.querySelectorAll("script,style,noscript,template,link[rel='stylesheet'],#siyuanmessage,#siyuan-dom-picker-banner,#siyuan-dom-picker-highlight").forEach(node=>node.remove());
+    clonedDoc.querySelectorAll("[hidden],[aria-hidden='true']").forEach(node=>node.remove());
+    clonedDoc.querySelectorAll("input,textarea,select,button").forEach(node=>node.remove());
+    clonedDoc.querySelectorAll("img").forEach(image=>{
+        const source=image.currentSrc || image.getAttribute("data-src") || image.getAttribute("data-original");
+        if(source) image.setAttribute("src",source);
+    });
+    siyuanNormalizePictureImages(clonedDoc,document.baseURI,Array.from(document.querySelectorAll("img")));
+    siyuanCleanZhihu(clonedDoc,document.URL);
+    return clonedDoc;
+}
+function siyuanGetConversationAdapter() {
+    const host=location.hostname.toLowerCase();
+    if(host==="gemini.google.com") return {
+        name:"Gemini",turns:Array.from(document.querySelectorAll("user-query,model-response")),
+        role:element=>element.matches("user-query")?"user":"assistant"
+    };
+    if(host==="chatgpt.com" || host==="chat.openai.com") return {
+        name:"ChatGPT",turns:Array.from(document.querySelectorAll("[data-message-author-role]")),
+        role:element=>element.getAttribute("data-message-author-role")==="user"?"user":"assistant"
+    };
+    if(host==="claude.ai") return {
+        name:"Claude",turns:Array.from(document.querySelectorAll('[data-testid*="user-message"],[data-testid*="assistant-message"],[data-testid="chat-message"]')),
+        role:element=>/user/i.test(element.getAttribute("data-testid")||"")?"user":(/assistant/i.test(element.getAttribute("data-testid")||"")?"assistant":"")
+    };
+    return null;
+}
+function siyuanExtractConversation() {
+    const adapter=siyuanGetConversationAdapter();
+    if(!adapter) return null;
+    const seen=new Set();
+    const turns=adapter.turns.map(element=>{
+        const role=adapter.role(element);
+        if(!role) return null;
+        const clone=element.cloneNode(true);
+        clone.querySelectorAll("button,[aria-label*='Copy'],[data-testid*='copy']").forEach(node=>node.remove());
+        const content=clone.innerHTML.trim();
+        const key=role+":"+content;
+        if(!content || seen.has(key)) return null;
+        seen.add(key);
+        return {role,content};
+    }).filter(Boolean);
+    if(!turns.length) return null;
+    const wrapper=document.createElement("div");
+    turns.forEach(turn=>{
+        const section=document.createElement("section");
+        const heading=document.createElement("h2");
+        heading.textContent=turn.role==="user"?siyuanGetMessage("conversation_user"):siyuanGetMessage("conversation_assistant");
+        const body=document.createElement("div");
+        body.innerHTML=turn.content;
+        section.append(heading,body);
+        wrapper.appendChild(section);
+    });
+    return {adapter:adapter.name,turns,element:wrapper};
+}
+
+const siyuanGetReadability = async (tabId, mode = "article") => {
     try {
         chrome.i18n.getMessage("tip_clipping");
     } catch (e) {
@@ -1290,22 +1461,42 @@ const siyuanGetReadability = async (tabId) => {
 
         // 重构并合并 Readability 前处理 https://github.com/siyuan-note/siyuan/issues/13306
         await siyuanPrepareYuqueCards(document);
-        const clonedDoc = await siyuanGetCloneNode(document);
+        const conversation = mode === "conversation" ? siyuanExtractConversation() : null;
+        const clonedDoc = mode === "dom" ? siyuanCreateFullDOMClone() : await siyuanGetCloneNode(document);
         siyuanCleanZhihu(clonedDoc, document.URL);
-        const yuqueImageSources = siyuanPrepareYuqueImages(document, clonedDoc);
+        const yuqueImageSources = mode === "dom" ? [] : siyuanPrepareYuqueImages(document, clonedDoc);
         siyuanNormalizeYuqueCodeBlocks(clonedDoc);
 
-        const article = new Readability(clonedDoc, {
-            keepClasses: true,
-            charThreshold: 16,
-            debug: true,
-        }).parse();
-        if (!article?.content) {
-            void siyuanShowTipByKey("tip_readability_failed", 7000);
-            return;
-        }
+        let article;
         const tempElement = document.createElement("div");
-        tempElement.innerHTML = article.content;
+        if (conversation) {
+            article = {
+                title: document.title || conversation.adapter + " conversation",
+                siteName: conversation.adapter,
+                excerpt: conversation.turns.length + " messages",
+                content: conversation.element.innerHTML,
+            };
+            tempElement.appendChild(conversation.element);
+        } else if (mode === "dom") {
+            article = {
+                title: document.title || location.hostname,
+                siteName: location.hostname,
+                excerpt: (document.body.innerText || "").trim().slice(0,240),
+                content: clonedDoc.body.innerHTML,
+            };
+            tempElement.innerHTML = clonedDoc.body.innerHTML;
+        } else {
+            article = new Readability(clonedDoc, {
+                keepClasses: true,
+                charThreshold: 16,
+                debug: true,
+            }).parse();
+            if (!article?.content) {
+                void siyuanShowTipByKey("tip_readability_failed", 7000);
+                return;
+            }
+            tempElement.innerHTML = article.content;
+        }
         siyuanRestoreYuqueImages(tempElement, yuqueImageSources);
         simplifyNestedTags(tempElement, "DIV");
         simplifyNestedTags(tempElement, "SPAN");

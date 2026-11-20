@@ -13,6 +13,9 @@ chrome.runtime.onInstalled.addListener(() => {
             title: chrome.i18n.getMessage("send"),
             contexts: ["page"],
         });
+        chrome.contextMenus.create({id:"pick-element",title:chrome.i18n.getMessage("picker_menu"),contexts:["page"]});
+        chrome.contextMenus.create({id:"send-dom",title:chrome.i18n.getMessage("send_dom"),contexts:["page"]});
+        chrome.contextMenus.create({id:"send-conversation",title:chrome.i18n.getMessage("send_conversation"),contexts:["page"]});
     });
 });
 
@@ -24,10 +27,13 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
             srcUrl: info.srcUrl,
         });
     } else if (info.menuItemId === "send") {
-        safeTabsSendMessage(tab && tab.id, {
-            func: "siyuanGetReadability",
-            tabId: tab && tab.id,
-        });
+        safeTabsSendMessage(tab && tab.id, {func:"siyuanGetReadability",tabId:tab&&tab.id,mode:"article"});
+    } else if (info.menuItemId === "pick-element") {
+        safeTabsSendMessage(tab && tab.id,{func:"siyuanPickElement",tabId:tab&&tab.id});
+    } else if (info.menuItemId === "send-dom") {
+        safeTabsSendMessage(tab && tab.id,{func:"siyuanGetReadability",tabId:tab&&tab.id,mode:"dom"});
+    } else if (info.menuItemId === "send-conversation") {
+        safeTabsSendMessage(tab && tab.id,{func:"siyuanGetReadability",tabId:tab&&tab.id,mode:"conversation"});
     }
 });
 
@@ -43,10 +49,13 @@ chrome.commands.onCommand.addListener(function (command) {
                 srcUrl: undefined,
             });
         } else if (command === "send-to-siyuan") {
-            safeTabsSendMessage(tab.id, {
-                func: "siyuanGetReadability",
-                tabId: tab.id,
-            });
+            safeTabsSendMessage(tab.id,{func:"siyuanGetReadability",tabId:tab.id,mode:"article"});
+        } else if (command === "pick-element") {
+            safeTabsSendMessage(tab.id,{func:"siyuanPickElement",tabId:tab.id});
+        } else if (command === "send-dom") {
+            safeTabsSendMessage(tab.id,{func:"siyuanGetReadability",tabId:tab.id,mode:"dom"});
+        } else if (command === "send-conversation") {
+            safeTabsSendMessage(tab.id,{func:"siyuanGetReadability",tabId:tab.id,mode:"conversation"});
         }
     });
 });
