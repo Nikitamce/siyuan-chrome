@@ -39,8 +39,10 @@ function createContentDOM(t, html, {url = "https://example.com/article", expSpan
         return result;
     };
     window.eval(readFileSync(path.join(root, "lib/Readability.js"), "utf8"));
-    window.eval(readFileSync(process.env.SIYUAN_CONTENT_SOURCE || path.join(root, "content.js"), "utf8") +
-        "\nwindow.clipArticle = siyuanGetReadability; window.clipSelection = eventDispatcher;");
+    window.eval(readFileSync(process.env.SIYUAN_CONTENT_SOURCE || path.join(root, "content.js"), "utf8"));
+    window.clipArticle = window.siyuanGetReadability;
+    window.clipSelection = window.eventDispatcher;
+    window.extractConversation = window.siyuanExtractConversation;
     window.clipArticle = window.siyuanGetReadability;
     window.clipSelection = window.eventDispatcher;
     window.extractConversation = window.siyuanExtractConversation;
