@@ -161,6 +161,9 @@
   "database_none": {
     "message": "Нет"
   },
+  "pick_element_button": {
+    "message": "Выбрать фрагмент страницы"
+  },
   "picker_menu": {
     "message": "Выбрать элемент страницы и сохранить"
   },
