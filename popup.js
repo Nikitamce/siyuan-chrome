@@ -306,8 +306,11 @@ function renderPopup(items) {
             chrome.tabs.sendMessage(tab.id, { func: "siyuanPickElement", tabId: tab.id }, () => {
                 if (chrome.runtime.lastError) {
                     console.warn("Could not start SiYuan element picker:", chrome.runtime.lastError.message);
+                    setSendBlock(siyuanGetMessage("tip_first_time"));
+                    pickElementBtn.disabled = false;
+                    return;
                 }
-                pickElementBtn.disabled = false;
+                window.close();
             });
         });
     });
