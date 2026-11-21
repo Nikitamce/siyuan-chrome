@@ -54,6 +54,19 @@
         "mac": "Command+Shift+S"
       },
       "description": "__MSG_command_send_to_siyuan__"
+    },
+    "pick-element": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+E",
+        "mac": "Command+Shift+E"
+      },
+      "description": "__MSG_command_pick_element__"
+    },
+    "send-dom": {
+      "description": "__MSG_command_send_dom__"
+    },
+    "send-conversation": {
+      "description": "__MSG_command_send_conversation__"
     }
   },
   "web_accessible_resources": [

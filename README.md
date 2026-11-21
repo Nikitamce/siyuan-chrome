@@ -39,3 +39,13 @@ Please customize these shortcuts in your browser's extension settings.
 ### Development tests
 
 Run `npm ci` and `npm test` with Node.js 18 or later. The tests cover clipping behavior and use jsdom for DOM regression cases; no running SiYuan kernel is required.
+
+### Additional capture modes in this fork
+
+The fork adds three optional capture workflows without changing the default article clipping behavior:
+
+* **Select page element**: choose a specific DOM element with a live highlight. Use Arrow Up to move to its parent, Enter to capture, and Escape to cancel. Context menu: **Select page element and save**. Shortcut: Ctrl+Shift+E (customizable in browser extension shortcuts).
+* **Entire page DOM**: saves the currently available DOM content rather than applying Readability article extraction. This does not automatically load infinite-scroll content that has not yet been rendered by the page.
+* **Conversation**: on supported Gemini, ChatGPT, and Claude pages, exports detected user and assistant turns with role headings. If a site layout is not recognized, the extension falls back to normal article extraction.
+
+The popup also includes a **Capture mode** selector. The default remains **Main article (Readability)**. The fork's regression suite is run by the GitHub Actions workflow **Web clipper regression tests** (Node.js 20).

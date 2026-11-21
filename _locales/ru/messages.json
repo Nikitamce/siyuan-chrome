@@ -160,5 +160,56 @@
   },
   "database_none": {
     "message": "Нет"
+  },
+  "picker_menu": {
+    "message": "Выбрать элемент страницы и сохранить"
+  },
+  "picker_hint": {
+    "message": "Наведите курсор на элемент и щёлкните для выбора. ↑ — перейти к родительскому элементу, Enter — сохранить, Esc — отменить."
+  },
+  "picker_capture": {
+    "message": "Сохранить выбранный элемент"
+  },
+  "picker_cancel": {
+    "message": "Отмена"
+  },
+  "picker_select_first": {
+    "message": "Сначала выберите элемент"
+  },
+  "picker_active": {
+    "message": "Режим выбора элемента включён"
+  },
+  "send_dom": {
+    "message": "Сохранить весь DOM"
+  },
+  "send_conversation": {
+    "message": "Сохранить диалог с разделением ролей"
+  },
+  "conversation_user": {
+    "message": "Пользователь"
+  },
+  "conversation_assistant": {
+    "message": "Ответ модели"
+  },
+  "command_pick_element": {
+    "message": "Выбрать элемент страницы и сохранить"
+  },
+  "command_send_dom": {
+    "message": "Сохранить весь DOM страницы"
+  },
+  "command_send_conversation": {
+    "message": "Сохранить диалог с разделением ролей"
+  },
+  "capture_mode": {
+    "message": "Режим сохранения"
+  },
+  "capture_article": {
+    "message": "Основная статья (Readability)"
+  },
+  "capture_dom": {
+    "message": "Весь DOM страницы"
+  },
+  "capture_conversation": {
+    "message": "Диалог (разделение по ролям)"
   }
 }

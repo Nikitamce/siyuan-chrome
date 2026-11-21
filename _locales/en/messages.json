@@ -160,5 +160,56 @@
   },
   "database_none": {
     "message": "None"
+  },
+  "picker_menu": {
+    "message": "Select page element and save"
+  },
+  "picker_hint": {
+    "message": "Hover over an element and click to select it. Arrow Up moves to its parent; Enter saves; Escape cancels."
+  },
+  "picker_capture": {
+    "message": "Save selected element"
+  },
+  "picker_cancel": {
+    "message": "Cancel"
+  },
+  "picker_select_first": {
+    "message": "Select an element first"
+  },
+  "picker_active": {
+    "message": "Element selection mode active"
+  },
+  "send_dom": {
+    "message": "Save entire DOM"
+  },
+  "send_conversation": {
+    "message": "Save conversation with speaker roles"
+  },
+  "conversation_user": {
+    "message": "User"
+  },
+  "conversation_assistant": {
+    "message": "Assistant"
+  },
+  "command_pick_element": {
+    "message": "Select page element and save"
+  },
+  "command_send_dom": {
+    "message": "Save entire page DOM"
+  },
+  "command_send_conversation": {
+    "message": "Save conversation with speaker roles"
+  },
+  "capture_mode": {
+    "message": "Capture mode"
+  },
+  "capture_article": {
+    "message": "Main article (Readability)"
+  },
+  "capture_dom": {
+    "message": "Entire page DOM"
+  },
+  "capture_conversation": {
+    "message": "Chat conversation (speaker roles)"
   }
 }
