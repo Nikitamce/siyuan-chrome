@@ -161,6 +161,9 @@
   "database_none": {
     "message": "None"
   },
+  "pick_element_button": {
+    "message": "Select page fragment"
+  },
   "picker_menu": {
     "message": "Select page element and save"
   },

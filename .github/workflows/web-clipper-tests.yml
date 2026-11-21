@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/web-clipper-review-fixes
+      - feat/popup-element-picker
   pull_request:
     branches:
       - main

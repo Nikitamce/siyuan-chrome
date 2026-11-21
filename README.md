@@ -44,7 +44,7 @@ Run `npm ci` and `npm test` with Node.js 18 or later. The tests cover clipping b
 
 The fork adds three optional capture workflows without changing the default article clipping behavior:
 
-* **Select page element**: choose a specific DOM element with a live highlight. Use Arrow Up to move to its parent, Enter to capture, and Escape to cancel. Context menu: **Select page element and save**. Shortcut: Ctrl+Shift+E (customizable in browser extension shortcuts).
+* **Select page fragment (popup button)**: click the SiYuan extension icon and press **Select page fragment**. The popup closes and the page enters element-picking mode with a live highlight. Click the wanted block to capture it; use Arrow Up to move to its parent, Enter to capture, or Escape to cancel. The same action is also available from the page context menu (**Select page element and save**) and Ctrl+Shift+E.
 * **Entire page DOM**: saves the currently available DOM content rather than applying Readability article extraction. This does not automatically load infinite-scroll content that has not yet been rendered by the page.
 * **Conversation**: on supported Gemini, ChatGPT, and Claude pages, exports detected user and assistant turns with role headings. If a site layout is not recognized, the extension falls back to normal article extraction.
 

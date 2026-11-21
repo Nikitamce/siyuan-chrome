@@ -9,6 +9,7 @@ on:
   push:
     branches:
       - feat/web-clipper-review-fixes
+      - feat/popup-element-picker
 
 permissions:
   contents: write

@@ -119,10 +119,12 @@ function bindSyncInput(el, storageKey, { normalize, normalizeOnFlush, onSaved } 
 function setSendBlock(message) {
     const alert = document.getElementById("popupAlert");
     const send = document.getElementById("send");
+    const pickElement = document.getElementById("pickElement");
     if (!alert || !send) return;
     const blocked = !!message;
     alert.textContent = message || "";
     send.hidden = blocked;
+    if (pickElement) pickElement.hidden = blocked;
     alert.hidden = !blocked;
 }
 
@@ -262,6 +264,7 @@ function renderPopup(items) {
         `
         <div class="popup__send-wrap">
             <button type="button" class="popup__send u-btn u-btn--header u-btn--lg" id="send">${t("send")}</button>
+            <button type="button" class="popup__pick-element u-btn u-btn--secondary u-btn--lg" id="pickElement">${t("pick_element_button")}</button>
             <div id="popupAlert" class="popup__alert u-selectable" role="alert" hidden aria-live="polite"></div>
         </div>
     `,
@@ -282,6 +285,33 @@ function renderPopup(items) {
             setTimeout(() => {
                 sendBtn.disabled = false;
             }, 600);
+        });
+    });
+
+    const pickElementBtn = root.querySelector("#pickElement");
+    pickElementBtn.addEventListener("click", async () => {
+        if (pickElementBtn.disabled) return;
+        pickElementBtn.disabled = true;
+        await flushSyncInputs();
+        if (!syncSendBlockFromLocal()) {
+            pickElementBtn.disabled = false;
+            return;
+        }
+        chrome.tabs.query({ currentWindow: true, active: true }, (tabs) => {
+            const tab = tabs[0];
+            if (!tab?.id) {
+                pickElementBtn.disabled = false;
+                return;
+            }
+            chrome.tabs.sendMessage(tab.id, { func: "siyuanPickElement", tabId: tab.id }, () => {
+                if (chrome.runtime.lastError) {
+                    console.warn("Could not start SiYuan element picker:", chrome.runtime.lastError.message);
+                    setSendBlock(siyuanGetMessage("tip_first_time"));
+                    pickElementBtn.disabled = false;
+                    return;
+                }
+                window.close();
+            });
         });
     });
 
