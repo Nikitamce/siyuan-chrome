@@ -38,6 +38,7 @@ function createContentDOM(t, html, {url = "https://example.com/article", expSpan
         if (node.tagName === "SCRIPT") queueMicrotask(() => node.onload?.());
         return result;
     };
+    window.eval(readFileSync(path.join(root, "lib/siyuan-clip-normalizer.js"), "utf8"));
     window.eval(readFileSync(path.join(root, "lib/Readability.js"), "utf8"));
     window.eval(
         readFileSync(process.env.SIYUAN_CONTENT_SOURCE || path.join(root, "content.js"), "utf8") +
