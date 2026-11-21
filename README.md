@@ -45,7 +45,9 @@ Run `npm ci` and `npm test` with Node.js 18 or later. The tests cover clipping b
 The fork adds three optional capture workflows without changing the default article clipping behavior:
 
 * **Select page fragment (popup button)**: click the SiYuan extension icon and press **Select page fragment**. The popup closes and the page enters element-picking mode with a live highlight. Click the wanted block to capture it; use Arrow Up to move to its parent, Enter to capture, or Escape to cancel. The same action is also available from the page context menu (**Select page element and save**) and Ctrl+Shift+E.
-* **Entire page DOM**: saves the currently available DOM content rather than applying Readability article extraction. This does not automatically load infinite-scroll content that has not yet been rendered by the page.
-* **Conversation**: on supported Gemini, ChatGPT, and Claude pages, exports detected user and assistant turns with role headings. If a site layout is not recognized, the extension falls back to normal article extraction.
+* **Entire page DOM**: intentionally captures the current page DOM, including feed items and surrounding page content. It is not a clean single-post mode and does not automatically load infinite-scroll content.
+* **Conversation**: exports detected user and assistant turns on Gemini, ChatGPT, and Claude only. On other sites the extension reports that the mode is unsupported instead of silently falling back to an unrelated article.
+* **Paragraph and image normalization**: nested DIV-based layouts are converted into separate paragraph blocks where possible; bare links to image files are embedded as images, and rendered image dimensions are retained when available.
+* **Feeds and social profiles**: Readability can select more than one feed item because feeds are not always structured as a single article. Use **Select page fragment** from the popup to capture one post or review. Click the post, use Arrow Up to expand the selection to its parent card, then press Enter or Save.
 
 The popup also includes a **Capture mode** selector. The default remains **Main article (Readability)**. The fork's regression suite is run by the GitHub Actions workflow **Web clipper regression tests** (Node.js 20).

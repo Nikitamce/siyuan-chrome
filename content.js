@@ -1093,6 +1093,8 @@ const siyuanEnsureClipReady = async () => {
 };
 
 const siyuanSendUpload = async (tempElement, tabId, srcUrl, type, article, href, clipItems) => {
+    siyuanNormalizeClipBlockStructure(tempElement);
+    siyuanConvertBareClipImageURLs(tempElement);
     siyuanNormalizePictureImages(tempElement, document.baseURI);
     const items = clipItems || (await siyuanGetClipSettings());
 
@@ -1314,7 +1316,7 @@ function siyuanStartElementPicker(tabId) {
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
-        if (state.current) void siyuanCaptureElement(state.current, tabId);
+        if (state.current) void siyuanShowTipByKey("picker_selected", 3000);
     };
     state.onKey = event => {
         if (event.key === "Escape") {
@@ -1364,9 +1366,10 @@ async function siyuanCaptureElement(element,tabId) {
     if (!settings) return;
     const clone = element.cloneNode(true);
     siyuanCleanZhihu(clone,document.URL);
-    siyuanNormalizePictureImages(clone,document.baseURI);
+    const sourceImages = element.matches?.("img") ? [element] : Array.from(element.querySelectorAll("img"));
     const wrapper = document.createElement("div");
     wrapper.appendChild(clone);
+    siyuanNormalizePictureImages(wrapper,document.baseURI,sourceImages);
     const article = {
         title:(element.getAttribute("aria-label") || element.querySelector("h1,h2,h3,h4")?.textContent || document.title || "").trim(),
         siteName:location.hostname,
@@ -1494,6 +1497,10 @@ const siyuanGetReadability = async (tabId, mode = "article") => {
         // 重构并合并 Readability 前处理 https://github.com/siyuan-note/siyuan/issues/13306
         await siyuanPrepareYuqueCards(document);
         const conversation = mode === "conversation" ? siyuanExtractConversation() : null;
+        if (mode === "conversation" && !conversation) {
+            void siyuanShowTipByKey("tip_conversation_not_supported", 6000);
+            return;
+        }
         const clonedDoc = mode === "dom" ? siyuanCreateFullDOMClone() : await siyuanGetCloneNode(document);
         siyuanCleanZhihu(clonedDoc, document.URL);
         const yuqueImageSources = mode === "dom" ? [] : siyuanPrepareYuqueImages(document, clonedDoc);
@@ -1530,11 +1537,8 @@ const siyuanGetReadability = async (tabId, mode = "article") => {
             tempElement.innerHTML = article.content;
         }
         siyuanRestoreYuqueImages(tempElement, yuqueImageSources);
-        simplifyNestedTags(tempElement, "DIV");
+        // Keep structural containers so the kernel can convert separate page blocks into separate SiYuan blocks.
         simplifyNestedTags(tempElement, "SPAN");
-        simplifyNestedTags(tempElement, "SECTION");
-        simplifyNestedTags(tempElement, "ARTICLE");
-        simplifyNestedTags(tempElement, "P");
         // console.log(article)
         siyuanSendUpload(tempElement, tabId, undefined, "article", article, window.location.href, clipSettings);
     } catch (e) {

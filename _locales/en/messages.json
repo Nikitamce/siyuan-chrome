@@ -168,7 +168,7 @@
     "message": "Select page element and save"
   },
   "picker_hint": {
-    "message": "Hover over an element and click to select it. Arrow Up moves to its parent; Enter saves; Escape cancels."
+    "message": "Hover and click a block to select it. Arrow Up selects its parent; Enter or Save sends it to SiYuan; Escape cancels."
   },
   "picker_capture": {
     "message": "Save selected element"
@@ -214,5 +214,11 @@
   },
   "capture_conversation": {
     "message": "Chat conversation (speaker roles)"
+  },
+  "picker_selected": {
+    "message": "Block selected. Press Arrow Up to choose its parent container, then Enter or Save."
+  },
+  "tip_conversation_not_supported": {
+    "message": "Conversation mode supports Gemini, ChatGPT, and Claude only. Use Article or Entire page for this website."
   }
 }
