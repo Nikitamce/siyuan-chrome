@@ -300,7 +300,16 @@ html[lang="uk"] .popup {
     display: none;
 }
 
-.popup__send:disabled {
+.popup__pick-element {
+    margin-top: var(--space-2);
+}
+
+.popup__pick-element[hidden] {
+    display: none;
+}
+
+.popup__send:disabled,
+.popup__pick-element:disabled {
     opacity: 0.65;
     cursor: not-allowed;
 }
