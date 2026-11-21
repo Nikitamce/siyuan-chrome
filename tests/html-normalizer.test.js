@@ -6,7 +6,9 @@ const {JSDOM} = require("jsdom");
 
 function createDOM(html) {
     const dom = new JSDOM(html, {url: "https://panaxgames.com/profile/example"});
-    dom.window.eval(readFileSync(path.join(__dirname, "../lib/siyuan-clip-normalizer.js"), "utf8"));
+    dom.window.eval(readFileSync(path.join(__dirname, "../lib/siyuan-clip-normalizer.js"), "utf8") +
+        "\nwindow.siyuanNormalizeClipBlockStructure = siyuanNormalizeClipBlockStructure;" +
+        "window.siyuanConvertBareClipImageURLs = siyuanConvertBareClipImageURLs;");
     return dom;
 }
 
