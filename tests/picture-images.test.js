@@ -69,3 +69,16 @@ test("skips unmatched media and unsupported types and preserves standalone or ge
     scope.siyuanNormalizePictureImages({querySelectorAll: () => [image]}, "https://example.com/article");
     assert.equal(values.src, "assets/existing.png");
 });
+
+test("retains the dimensions at which the source page displayed an image", () => {
+    const original = element("IMG", {});
+    original.getBoundingClientRect = () => ({width: 72.4, height: 48.6});
+    const values = {src: "https://example.com/large.png"};
+    const clone = element("IMG", values);
+    clone.style = {};
+    scope.siyuanNormalizePictureImages({querySelectorAll: () => [clone]}, "https://example.com/article", [original]);
+    assert.equal(values.width, "72");
+    assert.equal(values.height, "49");
+    assert.equal(clone.style.maxWidth, "100%");
+    assert.equal(clone.style.height, "auto");
+});
