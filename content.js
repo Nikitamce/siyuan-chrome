@@ -1367,9 +1367,9 @@ async function siyuanCaptureElement(element,tabId) {
     const clone = element.cloneNode(true);
     siyuanCleanZhihu(clone,document.URL);
     const sourceImages = element.matches?.("img") ? [element] : Array.from(element.querySelectorAll("img"));
-    siyuanNormalizePictureImages(clone,document.baseURI,sourceImages);
     const wrapper = document.createElement("div");
     wrapper.appendChild(clone);
+    siyuanNormalizePictureImages(wrapper,document.baseURI,sourceImages);
     const article = {
         title:(element.getAttribute("aria-label") || element.querySelector("h1,h2,h3,h4")?.textContent || document.title || "").trim(),
         siteName:location.hostname,
