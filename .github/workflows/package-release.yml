@@ -4,6 +4,11 @@ on:
   release:
     types:
       - published
+  workflow_dispatch:
+  # Exercise the release package on the feature branch before it is merged.
+  push:
+    branches:
+      - feat/web-clipper-review-fixes
 
 permissions:
   contents: write
@@ -13,10 +18,10 @@ jobs:
     name: Test and package extension
     runs-on: ubuntu-latest
     steps:
-      - name: Check out released tag
+      - name: Check out source
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ github.event.release.tag_name || github.sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -37,7 +42,7 @@ jobs:
       - name: Create extension ZIP
         id: package
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
         run: |
           set -euo pipefail
 
@@ -66,7 +71,8 @@ jobs:
           echo "zip_name=$ZIP_NAME" >> "$GITHUB_OUTPUT"
           echo "Created $ZIP_NAME"
 
-      - name: Upload ZIP to GitHub Release
+      - name: Attach ZIP to GitHub Release
+        if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
@@ -74,3 +80,11 @@ jobs:
           gh release upload "$RELEASE_TAG" "${{ steps.package.outputs.zip_name }}" \
             --clobber \
             --repo "$GITHUB_REPOSITORY"
+
+      - name: Upload ZIP as a test artifact
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: siyuan-chrome-extension-zip
+          path: ${{ steps.package.outputs.zip_name }}
+          if-no-files-found: error
