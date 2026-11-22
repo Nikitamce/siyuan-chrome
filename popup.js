@@ -174,6 +174,7 @@ function setSearchPathDisplay(element, label, notebook, path, parentDoc = "") {
 }
 
 let notebookListGen = 0;
+let notebookListLoading = false;
 let savePathSearchGen = 0;
 let savePathPreviewGen = 0;
 let databaseSearchGen = 0;
@@ -281,7 +282,11 @@ function renderPopup(items) {
                 return;
             }
             const mode = document.getElementById("captureMode")?.value || "article";
-            chrome.tabs.sendMessage(tab.id, { func: "siyuanGetReadability", tabId: tab.id, mode });
+            if (mode === "selection") {
+                chrome.tabs.sendMessage(tab.id, { func: "send-selection", tabId: tab.id });
+            } else {
+                chrome.tabs.sendMessage(tab.id, { func: "siyuanGetReadability", tabId: tab.id, mode });
+            }
             setTimeout(() => {
                 sendBtn.disabled = false;
             }, 600);
@@ -321,6 +326,7 @@ function renderPopup(items) {
             <span class="u-text-caption u-selectable">${t("capture_mode")}</span>
             <select class="popup__select u-surface" id="captureMode">
                 <option value="article">${t("capture_article")}</option>
+                <option value="selection">${t("capture_selection")}</option>
                 <option value="dom">${t("capture_dom")}</option>
                 <option value="conversation">${t("capture_conversation")}</option>
             </select>
@@ -780,17 +786,24 @@ const updateNotebookList = async ({ quiet = false } = {}) => {
     const token = tokenElement.value.trim();
     const selectedNotebookAtRequest = document.getElementById("searchPathDisplay")?.dataset.notebook || "";
     if (!token) {
+        notebookListLoading = false;
         notebookElement.replaceChildren(new Option(siyuanGetMessage("notebook_placeholder"), ""));
         syncSendBlockFromLocal();
         return;
     }
 
-    const result = await siyuanKernelFetch({
-        ip: ipElement.value,
-        token: tokenElement.value,
-        path: "/api/notebook/lsNotebooks",
-        body: {},
-    });
+    notebookListLoading = true;
+    let result;
+    try {
+        result = await siyuanKernelFetch({
+            ip: ipElement.value,
+            token: tokenElement.value,
+            path: "/api/notebook/lsNotebooks",
+            body: {},
+        });
+    } finally {
+        if (gen === notebookListGen) notebookListLoading = false;
+    }
     if (gen !== notebookListGen) return;
 
     if (!result.ok) {
@@ -871,6 +884,9 @@ const updateSavePathSearch = async () => {
     const keyword = searchInput.value.trim();
     if (!keyword) {
         renderNotebookRootOptions();
+        if (notebookCache.length === 0 && !notebookListLoading) {
+            void updateNotebookList({ quiet: false });
+        }
         return;
     }
     const result = await siyuanKernelFetch({

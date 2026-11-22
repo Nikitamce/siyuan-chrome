@@ -160,5 +160,20 @@
   },
   "database_none": {
     "message": "无"
+  },
+  "send_selection": {
+    "message": "发送选中内容到思源"
+  },
+  "capture_selection": {
+    "message": "选中文本"
+  },
+  "picker_parent": {
+    "message": "父元素 (↑)"
+  },
+  "picker_reselect": {
+    "message": "重新选择"
+  },
+  "tip_copy_ok": {
+    "message": "已复制到剪贴板"
   }
 }

@@ -160,5 +160,20 @@
   },
   "database_none": {
     "message": "無"
+  },
+  "send_selection": {
+    "message": "傳送選取內容到思源"
+  },
+  "capture_selection": {
+    "message": "選取文字"
+  },
+  "picker_parent": {
+    "message": "父元素 (↑)"
+  },
+  "picker_reselect": {
+    "message": "重新選擇"
+  },
+  "tip_copy_ok": {
+    "message": "已複製到剪貼簿"
   }
 }

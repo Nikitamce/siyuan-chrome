@@ -220,5 +220,20 @@
   },
   "tip_conversation_not_supported": {
     "message": "Conversation mode supports Gemini, ChatGPT, and Claude only. Use Article or Entire page for this website."
+  },
+  "send_selection": {
+    "message": "Send selection to SiYuan"
+  },
+  "capture_selection": {
+    "message": "Selected text"
+  },
+  "picker_parent": {
+    "message": "Parent (↑)"
+  },
+  "picker_reselect": {
+    "message": "Re-select"
+  },
+  "tip_copy_ok": {
+    "message": "Copied to clipboard"
   }
 }

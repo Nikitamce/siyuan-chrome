@@ -9,6 +9,12 @@ chrome.runtime.onInstalled.addListener(() => {
         });
 
         chrome.contextMenus.create({
+            id: "send-selection",
+            title: chrome.i18n.getMessage("send_selection"),
+            contexts: ["selection"],
+        });
+
+        chrome.contextMenus.create({
             id: "send",
             title: chrome.i18n.getMessage("send"),
             contexts: ["page"],
@@ -25,6 +31,13 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
             func: "copy",
             tabId: tab && tab.id,
             srcUrl: info.srcUrl,
+            selectionText: info.selectionText,
+        });
+    } else if (info.menuItemId === "send-selection") {
+        safeTabsSendMessage(tab && tab.id, {
+            func: "send-selection",
+            tabId: tab && tab.id,
+            selectionText: info.selectionText,
         });
     } else if (info.menuItemId === "send") {
         safeTabsSendMessage(tab && tab.id, {func:"siyuanGetReadability",tabId:tab&&tab.id,mode:"article"});
@@ -485,6 +498,33 @@ async function handleArticleClip(requestData, apiBase, copyData, fetchFileErr) {
     }
 }
 
+const SIYUAN_MIME_EXTENSIONS = {
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/svg+xml": ".svg",
+    "image/avif": ".avif",
+    "image/bmp": ".bmp",
+};
+
+function getUploadFilename(key, mimeType) {
+    const ext = SIYUAN_MIME_EXTENSIONS[String(mimeType || "").toLowerCase()] || "";
+    try {
+        const url = new URL(unescape(key));
+        const base = url.pathname.split("/").pop() || "";
+        if (base && /\.[a-z0-9]{2,5}$/i.test(base)) {
+            if (ext && !base.toLowerCase().endsWith(ext)) {
+                return base.replace(/\.[a-z0-9]{2,5}$/i, ext);
+            }
+            return base;
+        }
+    } catch (_e) {
+        // fallback below
+    }
+    return ext ? `asset${ext}` : "asset";
+}
+
 async function handleUploadCopy(requestData) {
     const apiBase = siyuanNormalizeBase(requestData.api);
     const fetchFileErr = requestData.fetchFileErr;
@@ -492,8 +532,14 @@ async function handleUploadCopy(requestData) {
     const formData = new FormData();
     formData.append("dom", requestData.dom);
     for (const key of Object.keys(requestData.files)) {
-        const base64Response = await fetch(requestData.files[key].data);
-        formData.append(key, await base64Response.blob());
+        const entry = requestData.files[key];
+        const base64Response = await fetch(entry.data);
+        let blob = await base64Response.blob();
+        const mimeType = entry.type || blob.type || "";
+        if (mimeType && blob.type !== mimeType) {
+            blob = new Blob([blob], { type: mimeType });
+        }
+        formData.append(key, blob, getUploadFilename(key, mimeType));
     }
     formData.append("notebook", requestData.notebook);
     formData.append("href", requestData.href);
@@ -533,12 +579,20 @@ async function handleUploadCopy(requestData) {
             data: copyResult.data.md,
         });
 
-        if ("" !== copyResult.msg && requestData.type !== "article") {
-            safeTabsSendMessage(requestData.tabId, {
-                func: "tip",
-                msg: copyResult.msg,
-                tip: requestData.tip,
-            });
+        if (requestData.type !== "article") {
+            if ("" !== copyResult.msg) {
+                safeTabsSendMessage(requestData.tabId, {
+                    func: "tip",
+                    msg: copyResult.msg,
+                    tip: requestData.tip,
+                });
+            } else {
+                safeTabsSendMessage(requestData.tabId, {
+                    func: "tipKey",
+                    msg: "tip_copy_ok",
+                    tip: requestData.tip,
+                });
+            }
         }
 
         if (requestData.type === "article") {

@@ -38,7 +38,7 @@ const eventDispatcher = async (request, sender, sendResponse) => {
         return;
     }
 
-    if ("copy" !== request.func) {
+    if ("copy" !== request.func && "send-selection" !== request.func) {
         return;
     }
 
@@ -47,24 +47,58 @@ const eventDispatcher = async (request, sender, sendResponse) => {
         return;
     }
 
+    const isDirectSend = "send-selection" === request.func;
     const selection = window.getSelection();
-    if (selection && 0 < selection.rangeCount) {
+    const tempElement = document.createElement("div");
+    let hasContent = false;
+    let sourceImages = [];
+
+    if (selection && 0 < selection.rangeCount && !selection.isCollapsed) {
         const range = selection.getRangeAt(0);
-        const tempElement = document.createElement("div");
         tempElement.appendChild(range.cloneContents());
-        const sourceImages = Array.from(document.querySelectorAll("img")).filter(image => range.intersectsNode(image));
+        sourceImages = Array.from(document.querySelectorAll("img")).filter(image => range.intersectsNode(image));
+        hasContent = !!(tempElement.textContent?.trim() || tempElement.querySelector("img,svg,video,audio,canvas,table,pre,math,[data-formula],[data-tex]"));
+    }
+
+    if (!hasContent && request.selectionText && String(request.selectionText).trim()) {
+        String(request.selectionText).split(/\r?\n/).forEach((line) => {
+            if (!line.trim()) return;
+            const p = document.createElement("p");
+            p.textContent = line;
+            tempElement.appendChild(p);
+        });
+        hasContent = !!tempElement.childNodes.length;
+    }
+
+    if (!hasContent && request.srcUrl) {
+        const img = document.createElement("img");
+        img.src = request.srcUrl;
+        tempElement.appendChild(img);
+        hasContent = true;
+    }
+
+    if (hasContent) {
+        await setMathJaxDataFormula();
         siyuanNormalizePictureImages(tempElement, document.baseURI, sourceImages);
         siyuanCleanZhihu(tempElement, document.URL);
-        siyuanSendUpload(tempElement, request.tabId, request.srcUrl, "part", undefined, undefined, clipSettings);
+        if (isDirectSend) {
+            void siyuanShowTipByKey("tip_clipping");
+            const article = {
+                title: (document.title || location.hostname || "Selection").trim(),
+                siteName: location.hostname,
+                excerpt: (tempElement.innerText || tempElement.textContent || "").trim().slice(0, 240),
+            };
+            siyuanSendUpload(tempElement, request.tabId, request.srcUrl, "article", article, window.location.href, clipSettings);
+        } else {
+            siyuanSendUpload(tempElement, request.tabId, request.srcUrl, "part", undefined, undefined, clipSettings);
+        }
     } else {
         void siyuanShowTipByKey("tip_no_selection", 3000);
     }
 };
 
-document.addEventListener("DOMContentLoaded", function () {
-    chrome.runtime.onMessage.removeListener(eventDispatcher);
-    chrome.runtime.onMessage.addListener(eventDispatcher);
-});
+chrome?.runtime?.onMessage?.removeListener?.(eventDispatcher);
+chrome?.runtime?.onMessage?.addListener?.(eventDispatcher);
 
 /**
  * 页面顶部提示（#siyuanmessage）状态机。
@@ -91,6 +125,7 @@ const TIP_BEHAVIOR = {
     tip_clipping: TIP_MODE.PROGRESS,
     tip_clip_img: TIP_MODE.PROGRESS,
     tip_clip_ok: TIP_MODE.TRANSIENT,
+    tip_copy_ok: TIP_MODE.TRANSIENT,
     tip_clip_database_incomplete: TIP_MODE.TRANSIENT,
     tip_token_miss: TIP_MODE.TRANSIENT,
     tip_token_invalid: TIP_MODE.TRANSIENT,
@@ -776,6 +811,9 @@ async function siyuanSvgToImg(tempElement) {
     console.log(`Found ${svgElements.length} SVG elements`);
 
     for (const svg of svgElements) {
+        if (svg.closest("[data-formula], [data-tex], .ztext-math, .katex, mjx-container, .MathJax")) {
+            continue;
+        }
         const img = document.createElement("img");
         img.src = await siyuanSvgToBase64(svg);
         img.style.cssText = window.getComputedStyle(svg).cssText;
@@ -1092,10 +1130,62 @@ const siyuanEnsureClipReady = async () => {
     return items;
 };
 
+const siyuanIsPlaceholderImageSrc = (src) => {
+    if (!src) return true;
+    const trimmed = String(src).trim();
+    if (!trimmed) return true;
+    if (/^data:image\/(?:svg\+xml|gif);/i.test(trimmed) && trimmed.length < 256) return true;
+    if (/(?:blank|spacer|placeholder|loading)\.(?:gif|png|svg)(?:[?#]|$)/i.test(trimmed)) return true;
+    return false;
+};
+
+const siyuanReadBlobHeader = (blob) => {
+    const chunk = blob.slice(0, 12);
+    if (typeof chunk.arrayBuffer === "function") {
+        return chunk.arrayBuffer();
+    }
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = reject;
+        reader.onload = () => resolve(reader.result);
+        reader.readAsArrayBuffer(chunk);
+    });
+};
+
+const siyuanDetectImageMimeType = async (blob, fallbackType) => {
+    try {
+        const header = new Uint8Array(await siyuanReadBlobHeader(blob));
+        if (header.length >= 6 &&
+            header[0] === 0x47 && header[1] === 0x49 && header[2] === 0x46 && header[3] === 0x38 &&
+            (header[4] === 0x37 || header[4] === 0x39) && header[5] === 0x61) {
+            return "image/gif";
+        }
+        if (header.length >= 12 &&
+            header[0] === 0x52 && header[1] === 0x49 && header[2] === 0x46 && header[3] === 0x46 &&
+            header[8] === 0x57 && header[9] === 0x45 && header[10] === 0x42 && header[11] === 0x50) {
+            return "image/webp";
+        }
+        if (header.length >= 8 &&
+            header[0] === 0x89 && header[1] === 0x50 && header[2] === 0x4e && header[3] === 0x47) {
+            return "image/png";
+        }
+        if (header.length >= 3 &&
+            header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff) {
+            return "image/jpeg";
+        }
+    } catch (_e) {
+        // ignore header read errors
+    }
+    return fallbackType || blob.type || "application/octet-stream";
+};
+
 const siyuanSendUpload = async (tempElement, tabId, srcUrl, type, article, href, clipItems) => {
+    siyuanNormalizeClipMath(tempElement);
+    siyuanNormalizeClipCodeBlocks(tempElement);
     siyuanNormalizeClipBlockStructure(tempElement);
     siyuanConvertBareClipImageURLs(tempElement);
     siyuanNormalizePictureImages(tempElement, document.baseURI);
+    siyuanUnwrapRedundantSpans(tempElement);
     const items = clipItems || (await siyuanGetClipSettings());
 
     if (type !== "article") {
@@ -1106,12 +1196,10 @@ const siyuanSendUpload = async (tempElement, tabId, srcUrl, type, article, href,
     if (srcUrl) {
         srcList.push(srcUrl);
     }
+    const isGifSource = value => /\.gif(?:[?#]|$)/i.test(value || "");
     const images = tempElement.querySelectorAll("img");
     images.forEach((item) => {
-        let src = item.getAttribute("src");
-        if (!src) {
-            return;
-        }
+        let src = item.getAttribute("src") || "";
 
         const itemClassName = String(item.className || "");
         if (itemClassName.includes("emoji") && "" !== item.getAttribute("alt")) {
@@ -1119,11 +1207,31 @@ const siyuanSendUpload = async (tempElement, tabId, srcUrl, type, article, href,
             return;
         }
 
-        // 处理使用 data-original 属性的情况 https://github.com/siyuan-note/siyuan/issues/11826
-        let dataOriginal = item.getAttribute("data-original");
-        if (dataOriginal && !dataOriginal.startsWith("/")) {
-            const isGifSource = value => /\.gif(?:[?#]|$)/i.test(value || "");
-            if (isGifSource(dataOriginal) || !isGifSource(src)) src = dataOriginal;
+        // Resolve lazy-loaded image attributes when src is missing or a placeholder.
+        const lazyCandidates = [
+            item.getAttribute("data-actualsrc"),
+            item.getAttribute("data-original"),
+            item.getAttribute("data-src"),
+            item.getAttribute("data-lazy-src"),
+            item.getAttribute("data-origin-src"),
+        ].filter(value => value && !value.startsWith("/"));
+
+        if (siyuanIsPlaceholderImageSrc(src) && lazyCandidates.length > 0) {
+            src = lazyCandidates.find(isGifSource) || lazyCandidates[0];
+            item.setAttribute("src", src);
+        } else {
+            // 处理使用 data-original 属性的情况 https://github.com/siyuan-note/siyuan/issues/11826
+            let dataOriginal = item.getAttribute("data-original");
+            if (dataOriginal && !dataOriginal.startsWith("/")) {
+                if (isGifSource(dataOriginal) || !isGifSource(src)) {
+                    src = dataOriginal;
+                    item.setAttribute("src", src);
+                }
+            }
+        }
+
+        if (!src) {
+            return;
         }
 
         if ("https:" === window.location.protocol) {
@@ -1136,8 +1244,9 @@ const siyuanSendUpload = async (tempElement, tabId, srcUrl, type, article, href,
         }
 
         if (itemClassName.includes("ztext-gif") && src.includes("zhimg.com")) {
-            // Zhihu GIF thumbnails use JPG URLs; request the animated source.
-            src = src.replace(/\.jpg(?=[?#]|$)/i, ".webp");
+            // Zhihu GIF thumbnails use JPG URLs; request the animated GIF source and keep DOM in sync.
+            src = src.replace(/\.jpg(?=[?#]|$)/i, ".gif");
+            item.setAttribute("src", src);
         }
 
         srcList.push(src);
@@ -1171,9 +1280,12 @@ const siyuanSendUpload = async (tempElement, tabId, srcUrl, type, article, href,
                     src = src.replace("/commons/thumb/", "/commons/");
                 }
             }
+            const acceptHeader = isGifSource(src)
+                ? "image/gif,image/*,*/*;q=0.8"
+                : "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8";
             response = await fetch(src, {
                 headers: {
-                    accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+                    accept: acceptHeader,
                     "sec-fetch-dest": "image",
                 },
             });
@@ -1187,12 +1299,14 @@ const siyuanSendUpload = async (tempElement, tabId, srcUrl, type, article, href,
             fetchFileErr = true;
             continue;
         }
-        const image = await response.blob();
-        const data = await siyuanConvertBlobToBase64(image);
-        const contentType = (response.headers?.get("content-type") || image.type || "")
+        const rawImage = await response.blob();
+        const headerType = (response.headers?.get("content-type") || rawImage.type || "")
             .split(";")[0].trim().toLowerCase();
+        const detectedType = await siyuanDetectImageMimeType(rawImage, headerType);
+        const image = rawImage.type === detectedType ? rawImage : new Blob([rawImage], { type: detectedType });
+        const data = await siyuanConvertBlobToBase64(image);
         files[escape(src)] = {
-            type: image.type || contentType || "application/octet-stream",
+            type: detectedType,
             data,
         };
 
@@ -1272,28 +1386,56 @@ const copyToClipboard = async (textToCopy) => {
 const SIYUAN_DOM_PICKER_STYLE_ID = "siyuan-dom-picker-style";
 let siyuanPickerState = null;
 
-function siyuanStartElementPicker(tabId) {
+async function siyuanStartElementPicker(tabId) {
     siyuanStopElementPicker();
+    await siyuanLangReady;
     const style = document.createElement("style");
     style.id = SIYUAN_DOM_PICKER_STYLE_ID;
     style.textContent = `
-        #siyuan-dom-picker-banner{position:fixed;z-index:2147483647;top:12px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;max-width:min(92vw,720px);padding:10px 14px;border-radius:12px;color:#fff;background:#202124;box-shadow:0 8px 30px #0005;font:13px/1.4 system-ui,sans-serif}
-        #siyuan-dom-picker-banner button{border:0;border-radius:7px;padding:6px 10px;cursor:pointer;font:inherit;color:#202124;background:#fff}
+        #siyuan-dom-picker-banner{position:fixed;z-index:2147483647;top:12px;left:50%;transform:translateX(-50%);display:flex;flex-wrap:wrap;align-items:center;gap:8px;max-width:min(94vw,760px);padding:10px 14px;border-radius:12px;color:#fff;background:#202124;box-shadow:0 8px 30px #0005;font:13px/1.4 system-ui,sans-serif}
+        #siyuan-dom-picker-banner button{border:0;border-radius:7px;padding:6px 10px;cursor:pointer;font:inherit;color:#202124;background:#fff;white-space:nowrap}
         #siyuan-dom-picker-banner button[data-primary]{color:#fff;background:#4285f4}
-        #siyuan-dom-picker-highlight{position:fixed;z-index:2147483646;pointer-events:none;border:2px solid #4285f4;background:#4285f422;border-radius:3px}
+        #siyuan-dom-picker-highlight{position:fixed;z-index:2147483646;pointer-events:none;border:2px solid #4285f4;background:#4285f422;border-radius:3px;box-sizing:border-box}
+        #siyuan-dom-picker-highlight[data-locked="true"]{border-color:#1e8e3e;background:#1e8e3e22;border-width:3px}
     `;
     (document.head || document.documentElement).appendChild(style);
     const banner = document.createElement("div");
     banner.id = "siyuan-dom-picker-banner";
-    banner.innerHTML = `<span>${siyuanGetMessage("picker_hint")}</span><button type="button" data-primary>${siyuanGetMessage("picker_capture")}</button><button type="button" data-cancel>${siyuanGetMessage("picker_cancel")}</button>`;
+    const hintSpan = document.createElement("span");
+    hintSpan.textContent = siyuanGetMessage("picker_hint");
+    const parentBtn = document.createElement("button");
+    parentBtn.type = "button";
+    parentBtn.setAttribute("data-parent", "");
+    parentBtn.textContent = siyuanGetMessage("picker_parent");
+    const reselectBtn = document.createElement("button");
+    reselectBtn.type = "button";
+    reselectBtn.setAttribute("data-reselect", "");
+    reselectBtn.textContent = siyuanGetMessage("picker_reselect");
+    reselectBtn.hidden = true;
+    const captureBtn = document.createElement("button");
+    captureBtn.type = "button";
+    captureBtn.setAttribute("data-primary", "");
+    captureBtn.textContent = siyuanGetMessage("picker_capture");
+    const cancelBtn = document.createElement("button");
+    cancelBtn.type = "button";
+    cancelBtn.setAttribute("data-cancel", "");
+    cancelBtn.textContent = siyuanGetMessage("picker_cancel");
+    banner.append(hintSpan, parentBtn, reselectBtn, captureBtn, cancelBtn);
     document.documentElement.appendChild(banner);
     const highlight = document.createElement("div");
     highlight.id = "siyuan-dom-picker-highlight";
     highlight.hidden = true;
     document.documentElement.appendChild(highlight);
-    const state = {style,banner,highlight,tabId,current:null,previousCursor:document.documentElement.style.cursor};
+    const state = {
+        style, banner, highlight, tabId,
+        current: null, locked: false,
+        previousCursor: document.documentElement.style.cursor,
+    };
     siyuanPickerState = state;
     document.documentElement.style.cursor = "crosshair";
+    const findTarget = (event) => event.composedPath().find(item =>
+        item instanceof Element && item !== document.documentElement && item !== document.body &&
+        !item.closest("#siyuan-dom-picker-banner") && !item.closest("#siyuan-dom-picker-highlight"));
     const update = element => {
         const rect = element.getBoundingClientRect();
         highlight.style.left = `${Math.max(0,rect.left)}px`;
@@ -1301,12 +1443,12 @@ function siyuanStartElementPicker(tabId) {
         highlight.style.width = `${Math.max(0,rect.width)}px`;
         highlight.style.height = `${Math.max(0,rect.height)}px`;
         highlight.hidden = rect.width <= 0 || rect.height <= 0;
+        highlight.dataset.locked = String(state.locked);
+        reselectBtn.hidden = !state.locked;
     };
     state.onMove = event => {
-        if (banner.contains(event.target)) return;
-        const element = event.composedPath().find(item =>
-            item instanceof Element && item !== document.documentElement && item !== document.body &&
-            !item.closest("#siyuan-dom-picker-banner") && !item.closest("#siyuan-dom-picker-highlight"));
+        if (state.locked || banner.contains(event.target)) return;
+        const element = findTarget(event);
         if (!element) return;
         state.current = element;
         update(element);
@@ -1316,7 +1458,13 @@ function siyuanStartElementPicker(tabId) {
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
-        if (state.current) void siyuanShowTipByKey("picker_selected", 3000);
+        const clicked = findTarget(event) || state.current;
+        if (clicked) {
+            state.current = clicked;
+            state.locked = true;
+            update(clicked);
+            void siyuanShowTipByKey("picker_selected", 3000);
+        }
     };
     state.onKey = event => {
         if (event.key === "Escape") {
@@ -1325,16 +1473,32 @@ function siyuanStartElementPicker(tabId) {
         } else if (event.key === "Enter" && state.current) {
             event.preventDefault();
             void siyuanCaptureElement(state.current, tabId);
-        } else if ((event.key === "ArrowUp" || event.key === "Backspace") && state.current?.parentElement) {
+        } else if ((event.key === "ArrowUp" || event.key === "Backspace") && state.current?.parentElement &&
+            state.current.parentElement !== document.documentElement) {
             event.preventDefault();
             state.current = state.current.parentElement;
+            state.locked = true;
             update(state.current);
         }
     };
     state.onScroll = () => { if (state.current) update(state.current); };
     state.onResize = () => { if (state.current) update(state.current); };
-    banner.querySelector("[data-cancel]").addEventListener("click", siyuanStopElementPicker);
-    banner.querySelector("[data-primary]").addEventListener("click", () => {
+    parentBtn.addEventListener("click", () => {
+        if (state.current?.parentElement && state.current.parentElement !== document.documentElement) {
+            state.current = state.current.parentElement;
+            state.locked = true;
+            update(state.current);
+        } else {
+            void siyuanShowTipByKey("picker_select_first", 2500);
+        }
+    });
+    reselectBtn.addEventListener("click", () => {
+        state.locked = false;
+        highlight.dataset.locked = "false";
+        reselectBtn.hidden = true;
+    });
+    cancelBtn.addEventListener("click", siyuanStopElementPicker);
+    captureBtn.addEventListener("click", () => {
         if (state.current) void siyuanCaptureElement(state.current, tabId);
         else void siyuanShowTipByKey("picker_select_first", 2500);
     });
@@ -1364,8 +1528,11 @@ async function siyuanCaptureElement(element,tabId) {
     siyuanStopElementPicker();
     const settings = await siyuanEnsureClipReady();
     if (!settings) return;
+    void siyuanShowTipByKey("tip_clipping");
+    await setMathJaxDataFormula();
     const clone = element.cloneNode(true);
     siyuanCleanZhihu(clone,document.URL);
+    fixInvalidNesting(clone);
     const sourceImages = element.matches?.("img") ? [element] : Array.from(element.querySelectorAll("img"));
     const wrapper = document.createElement("div");
     wrapper.appendChild(clone);
@@ -1443,15 +1610,20 @@ function siyuanExtractConversation() {
             "user-query, model-response, [data-message-author-role], [data-testid*='user-message'], [data-testid*='assistant-message'], [data-testid='chat-message']"
         );
         if (parentTurn && adapter.turns.includes(parentTurn)) continue;
-        const clone = adapter.content(element).cloneNode(true);
-        clone.querySelectorAll("button,[aria-label*='Copy'],[data-testid*='copy'],[data-testid*='feedback']").forEach(node => node.remove());
+        const sourceNode = adapter.content(element);
+        const clone = sourceNode.cloneNode(true);
+        clone.querySelectorAll(
+            "button,[aria-label*='Copy'],[data-testid*='copy'],[data-testid*='feedback'],.cdk-visually-hidden,message-actions,.response-footer,tts-control,copy-button"
+        ).forEach(node => node.remove());
+        siyuanNormalizePictureImages(clone, document.baseURI, Array.from(sourceNode.querySelectorAll("img")));
         const html = clone.innerHTML.trim();
         if (!html) continue;
         turns.push({role,content:html});
     }
     if (!turns.length) return null;
     const wrapper = document.createElement("div");
-    turns.forEach(turn => {
+    turns.forEach((turn, idx) => {
+        if (idx > 0) wrapper.appendChild(document.createElement("hr"));
         const section = document.createElement("section");
         section.setAttribute("data-siyuan-conversation-role",turn.role);
         const heading = document.createElement("h2");
@@ -1496,18 +1668,15 @@ const siyuanGetReadability = async (tabId, mode = "article") => {
 
         // 重构并合并 Readability 前处理 https://github.com/siyuan-note/siyuan/issues/13306
         await siyuanPrepareYuqueCards(document);
-        const conversation = mode === "conversation" ? siyuanExtractConversation() : null;
+        const conversation = (mode === "conversation" || mode === "article") ? siyuanExtractConversation() : null;
         if (mode === "conversation" && !conversation) {
             void siyuanShowTipByKey("tip_conversation_not_supported", 6000);
             return;
         }
-        const clonedDoc = mode === "dom" ? siyuanCreateFullDOMClone() : await siyuanGetCloneNode(document);
-        siyuanCleanZhihu(clonedDoc, document.URL);
-        const yuqueImageSources = mode === "dom" ? [] : siyuanPrepareYuqueImages(document, clonedDoc);
-        siyuanNormalizeYuqueCodeBlocks(clonedDoc);
 
         let article;
         const tempElement = document.createElement("div");
+        let yuqueImageSources = [];
         if (conversation) {
             article = {
                 title: document.title || conversation.adapter + " conversation",
@@ -1516,25 +1685,31 @@ const siyuanGetReadability = async (tabId, mode = "article") => {
                 content: conversation.element.innerHTML,
             };
             tempElement.appendChild(conversation.element);
-        } else if (mode === "dom") {
-            article = {
-                title: document.title || location.hostname,
-                siteName: location.hostname,
-                excerpt: (document.body.innerText || "").trim().slice(0,240),
-                content: clonedDoc.body.innerHTML,
-            };
-            tempElement.innerHTML = clonedDoc.body.innerHTML;
         } else {
-            article = new Readability(clonedDoc, {
-                keepClasses: true,
-                charThreshold: 16,
-                debug: true,
-            }).parse();
-            if (!article?.content) {
-                void siyuanShowTipByKey("tip_readability_failed", 7000);
-                return;
+            const clonedDoc = mode === "dom" ? siyuanCreateFullDOMClone() : await siyuanGetCloneNode(document);
+            siyuanCleanZhihu(clonedDoc, document.URL);
+            yuqueImageSources = mode === "dom" ? [] : siyuanPrepareYuqueImages(document, clonedDoc);
+            siyuanNormalizeYuqueCodeBlocks(clonedDoc);
+            if (mode === "dom") {
+                article = {
+                    title: document.title || location.hostname,
+                    siteName: location.hostname,
+                    excerpt: (document.body.innerText || "").trim().slice(0,240),
+                    content: clonedDoc.body.innerHTML,
+                };
+                tempElement.innerHTML = clonedDoc.body.innerHTML;
+            } else {
+                article = new Readability(clonedDoc, {
+                    keepClasses: true,
+                    charThreshold: 16,
+                    debug: true,
+                }).parse();
+                if (!article?.content) {
+                    void siyuanShowTipByKey("tip_readability_failed", 7000);
+                    return;
+                }
+                tempElement.innerHTML = article.content;
             }
-            tempElement.innerHTML = article.content;
         }
         siyuanRestoreYuqueImages(tempElement, yuqueImageSources);
         // Keep structural containers so the kernel can convert separate page blocks into separate SiYuan blocks.

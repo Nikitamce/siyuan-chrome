@@ -44,7 +44,8 @@ function createContentDOM(t, html, {url = "https://example.com/article", expSpan
         readFileSync(process.env.SIYUAN_CONTENT_SOURCE || path.join(root, "content.js"), "utf8") +
         "\nwindow.clipArticle = siyuanGetReadability;" +
         "window.clipSelection = eventDispatcher;" +
-        "window.extractConversation = siyuanExtractConversation;"
+        "window.extractConversation = siyuanExtractConversation;" +
+        "window.sendUpload = siyuanSendUpload;"
     );
     return {window, document: window.document, messages};
 }

@@ -160,5 +160,20 @@
   },
   "database_none": {
     "message": "Ninguno"
+  },
+  "send_selection": {
+    "message": "Send selection to SiYuan"
+  },
+  "capture_selection": {
+    "message": "Selected text"
+  },
+  "picker_parent": {
+    "message": "Parent (↑)"
+  },
+  "picker_reselect": {
+    "message": "Re-select"
+  },
+  "tip_copy_ok": {
+    "message": "Copied to clipboard"
   }
 }
