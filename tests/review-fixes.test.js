@@ -155,11 +155,13 @@ test("Zhihu and KaTeX math formulas normalize to data-formula and code blocks + 
     assert.equal(container.querySelector("blockquote").textContent, "Quoted inline text");
 });
 
-test("popup.css clamps dimensions to viewport so 125%+ global zoom never clips content", () => {
+test("popup.css keeps intrinsic popup width so Chrome never collapses popup and handles 125%+ zoom safely", () => {
     const css = readFileSync(path.join(root, "popup.css"), "utf8");
-    assert.match(css, /max-height:\s*min\(var\(--popup-max-height\),\s*100vh\)/);
-    assert.match(css, /width:\s*min\(var\(--popup-width\),\s*100vw\)/);
+    assert.match(css, /width:\s*var\(--popup-width\)/);
+    assert.doesNotMatch(css, /100vw|100vh/);
     assert.match(css, /\.popup__mode-select\s*\{/);
+    const js = readFileSync(path.join(root, "popup.js"), "utf8");
+    assert.match(js, /syncPopupViewportHeight/);
 });
 
 test("DeepSeek, Perplexity and Grok conversation adapters preserve speaker roles", t => {

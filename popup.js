@@ -237,10 +237,23 @@ async function reloadPopup(langCode) {
     refreshSelectedDatabase();
 }
 
+function syncPopupViewportHeight() {
+    const root = document.getElementById("mainContainer");
+    if (!root) return;
+    // Chrome caps popup height at ~600px / pageZoom (e.g. 480px at 125% zoom).
+    // Only clamp once Chrome has finished expanding the popup (>= 300px) so initial layout never collapses.
+    if (window.innerHeight >= 300 && window.innerHeight < 520) {
+        root.style.maxHeight = `${window.innerHeight}px`;
+    } else {
+        root.style.maxHeight = "";
+    }
+}
+
 function applyPopupLayout() {
     const langCode = siyuanGetLangCode();
     document.documentElement.dir = ["ar", "he"].includes(langCode) ? "rtl" : "ltr";
     document.documentElement.lang = langCode;
+    syncPopupViewportHeight();
 }
 
 // 关闭所有下拉菜单
@@ -772,6 +785,7 @@ async function bootstrapPopup() {
                 closeTemplateModal();
             }
         });
+        window.addEventListener("resize", syncPopupViewportHeight);
         if (items.token?.trim()) void updateNotebookList({ quiet: true });
         refreshSelectedDatabase();
     } catch (e) {
