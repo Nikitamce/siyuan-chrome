@@ -95,24 +95,32 @@ function debounce(fn, ms) {
 }
 
 function bindSyncInput(el, storageKey, { normalize, normalizeOnFlush, onSaved } = {}) {
+    let dirty = false;
+    let lastCommitted = el.value;
     const saveDraft = () => {
         chrome.storage.sync.set({ [storageKey]: el.value });
     };
-    const commit = (normalizeFn) => {
+    const commit = (normalizeFn, { forceNotify = true } = {}) => {
         let value = el.value;
         const fn = normalizeFn || normalize;
         if (fn) value = fn(value);
         if (el.value !== value) el.value = value;
+        const changed = dirty || value !== lastCommitted;
+        dirty = false;
+        lastCommitted = value;
         const saved = chrome.storage.sync.set({ [storageKey]: value });
-        onSaved?.(value);
+        if (forceNotify || changed) onSaved?.(value);
         return saved;
     };
     const debouncedSaveDraft = debounce(saveDraft, 300);
-    el.addEventListener("input", debouncedSaveDraft);
+    el.addEventListener("input", () => {
+        dirty = true;
+        debouncedSaveDraft();
+    });
     el.addEventListener("change", () => commit());
     syncInputFlushes.push(() => {
         debouncedSaveDraft.cancel();
-        commit(normalizeOnFlush || normalize);
+        commit(normalizeOnFlush || normalize, { forceNotify: false });
     });
 }
 

@@ -46,7 +46,8 @@ function createContentDOM(t, html, {url = "https://example.com/article", expSpan
         "window.clipSelection = eventDispatcher;" +
         "window.extractConversation = siyuanExtractConversation;" +
         "window.sendUpload = siyuanSendUpload;" +
-        "window.siyuanPreservePreLineBreaks = siyuanPreservePreLineBreaks;"
+        "window.siyuanPreservePreLineBreaks = siyuanPreservePreLineBreaks;" +
+        "window.detectImageMime = siyuanDetectImageMimeType;"
     );
     return {window, document: window.document, messages};
 }
