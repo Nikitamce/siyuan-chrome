@@ -18,12 +18,20 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   package:
     name: Test and package extension
     runs-on: ubuntu-latest
+    outputs:
+      zip_name: ${{ steps.package.outputs.zip_name }}
+      release_tag: ${{ steps.package.outputs.release_tag }}
+      should_release: ${{ steps.package.outputs.should_release }}
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -43,13 +51,29 @@ jobs:
         run: npm test
 
       - name: Validate extension manifest
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || github.event.release.tag_name || github.ref_name }}
+          IS_RELEASE: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '') }}
         run: |
-          node -e "const fs = require('node:fs'); const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8')); if (!manifest.manifest_version || !manifest.name || !manifest.version) throw new Error('manifest.json is missing required fields'); console.log('Packaging SiYuan extension version ' + manifest.version);"
+          node -e "
+            const fs = require('node:fs');
+            const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
+            if (manifest.manifest_version !== 3) throw new Error('Expected Manifest V3');
+            if (!manifest.name || !manifest.version) throw new Error('manifest.json is missing required fields');
+            if (process.env.IS_RELEASE === 'true' && process.env.RELEASE_TAG.startsWith('v')) {
+              const expected = 'v' + manifest.version;
+              if (process.env.RELEASE_TAG !== expected) {
+                throw new Error('Tag ' + process.env.RELEASE_TAG + ' does not match manifest.json version ' + expected);
+              }
+            }
+            console.log('Packaging SiYuan extension version ' + manifest.version);
+          "
 
       - name: Create extension ZIP
         id: package
         env:
           RELEASE_TAG: ${{ inputs.release_tag || github.event.release.tag_name || github.ref_name }}
+          SHOULD_RELEASE: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '') }}
         run: |
           set -euo pipefail
           SAFE_TAG="${RELEASE_TAG//\//-}"
@@ -57,15 +81,17 @@ jobs:
           STAGING_DIR="${RUNNER_TEMP}/siyuan-chrome-extension"
           mkdir -p "$STAGING_DIR"
 
-          rsync -a \
-            --exclude='.git/' \
-            --exclude='.github/' \
-            --exclude='node_modules/' \
-            --exclude='tests/' \
-            --exclude='package.json' \
-            --exclude='package-lock.json' \
-            --exclude='.gitignore' \
-            ./ "$STAGING_DIR/"
+          cp -R \
+            manifest.json \
+            background.js \
+            content.js \
+            options.html \
+            popup.css \
+            popup.js \
+            icons \
+            lib \
+            _locales \
+            "$STAGING_DIR/"
 
           (
             cd "$STAGING_DIR"
@@ -74,14 +100,34 @@ jobs:
 
           echo "zip_name=$ZIP_NAME" >> "$GITHUB_OUTPUT"
           echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "should_release=$SHOULD_RELEASE" >> "$GITHUB_OUTPUT"
           echo "Created $ZIP_NAME"
 
+      - name: Upload ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: siyuan-chrome-extension-zip
+          path: ${{ steps.package.outputs.zip_name }}
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: package
+    if: needs.package.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download ZIP artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: siyuan-chrome-extension-zip
+
       - name: Create or update GitHub Release with ZIP
-        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.package.outputs.release_tag }}
-          ZIP_NAME: ${{ steps.package.outputs.zip_name }}
+          RELEASE_TAG: ${{ needs.package.outputs.release_tag }}
+          ZIP_NAME: ${{ needs.package.outputs.zip_name }}
         run: |
           set -euo pipefail
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
@@ -90,15 +136,8 @@ jobs:
             gh release create "$RELEASE_TAG" "$ZIP_NAME" \
               --repo "$GITHUB_REPOSITORY" \
               --title "SiYuan Chrome Extension $RELEASE_TAG" \
-              --generate-notes
+              --generate-notes \
+              --verify-tag
           fi
           gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets \
             --jq '.assets[].name' | grep -Fx "$ZIP_NAME"
-
-      - name: Upload ZIP as a test artifact
-        if: "!startsWith(github.ref, 'refs/tags/v') && github.event_name != 'release' && !(github.event_name == 'workflow_dispatch' && inputs.release_tag != '')"
-        uses: actions/upload-artifact@v4
-        with:
-          name: siyuan-chrome-extension-zip
-          path: ${{ steps.package.outputs.zip_name }}
-          if-no-files-found: error
