@@ -225,3 +225,25 @@ test("all 21 bundled locales include new keys and Russian tags_placeholder is fi
     assert.match(ru.tags_placeholder.message, /запятые/i);
 });
 
+test("clip normalizer resolves relative links, unwraps color-only dark-mode spans, and preserves pre-line breaks", async t => {
+    const html = `
+      <div id="card">
+        <a href="/profile/SteveFox_dotcom"><img src="https://cdn.example.com/a.webp"></a>
+        <span style="color: rgb(170, 170, 170); white-space: pre-line">Line 1\n🎮 Line 2\n⭐ Line 3</span>
+      </div>`;
+    const {window, document, messages} = createContentDOM(t, html, {url: "https://panaxgames.com/notification"});
+    const card = document.getElementById("card");
+    const clone = card.cloneNode(true);
+    window.siyuanPreservePreLineBreaks(card, clone);
+    const wrapper = document.createElement("div");
+    wrapper.appendChild(clone);
+    await window.sendUpload(wrapper, 1, undefined, "article", {title: "PANAX"}, "https://panaxgames.com/notification", {assets: false}, {skipReload: true});
+
+    const upload = messages.find(m => m.func === "upload-copy");
+    assert.ok(upload);
+    assert.match(upload.data.dom, /href="https:\/\/panaxgames\.com\/profile\/SteveFox_dotcom"/);
+    assert.doesNotMatch(upload.data.dom, /color:\s*rgb\(170/);
+    assert.match(upload.data.dom, /Line 1<br>🎮 Line 2<br>⭐ Line 3/);
+});
+
+

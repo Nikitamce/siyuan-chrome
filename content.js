@@ -1179,12 +1179,39 @@ const siyuanDetectImageMimeType = async (blob, fallbackType) => {
     return fallbackType || blob.type || "application/octet-stream";
 };
 
+const siyuanPreservePreLineBreaks = (sourceRoot, clonedRoot) => {
+    if (!sourceRoot || !clonedRoot) return;
+    const sourceElements = [sourceRoot, ...Array.from(sourceRoot.querySelectorAll?.("*") || [])];
+    const clonedElements = [clonedRoot, ...Array.from(clonedRoot.querySelectorAll?.("*") || [])];
+    if (sourceElements.length !== clonedElements.length) return;
+    const ownerDoc = clonedRoot.ownerDocument || document;
+    for (let i = 0; i < sourceElements.length; i++) {
+        const srcEl = sourceElements[i];
+        const dstEl = clonedElements[i];
+        if (!srcEl || !dstEl || srcEl.nodeType !== 1 || dstEl.nodeType !== 1) continue;
+        if (siyuanIsSpanTextProtected(dstEl) || dstEl.closest?.("pre, code, math, svg, [data-formula], .katex, .ztext-math")) continue;
+        const ws = (window.getComputedStyle?.(srcEl)?.whiteSpace || "").trim().toLowerCase();
+        if (!["pre-line", "pre-wrap", "break-spaces"].includes(ws)) continue;
+        for (const node of Array.from(dstEl.childNodes)) {
+            if (node.nodeType !== Node.TEXT_NODE || !node.nodeValue?.includes("\n")) continue;
+            const fragment = ownerDoc.createDocumentFragment();
+            const lines = node.nodeValue.split(/\r?\n/);
+            lines.forEach((line, idx) => {
+                if (idx > 0) fragment.appendChild(ownerDoc.createElement("br"));
+                if (line) fragment.appendChild(ownerDoc.createTextNode(line));
+            });
+            dstEl.replaceChild(fragment, node);
+        }
+    }
+};
+
 const siyuanSendUpload = async (tempElement, tabId, srcUrl, type, article, href, clipItems, options = {}) => {
     siyuanNormalizeClipMath(tempElement);
     siyuanNormalizeClipCodeBlocks(tempElement);
     siyuanNormalizeClipBlockStructure(tempElement);
     siyuanConvertBareClipImageURLs(tempElement);
     siyuanNormalizePictureImages(tempElement, document.baseURI);
+    siyuanResolveClipLinks(tempElement, href || document.baseURI);
     siyuanUnwrapRedundantSpans(tempElement);
     const items = clipItems || (await siyuanGetClipSettings());
 
@@ -1532,6 +1559,7 @@ async function siyuanCaptureElement(element,tabId) {
     void siyuanShowTipByKey("tip_clipping");
     await setMathJaxDataFormula();
     const clone = element.cloneNode(true);
+    siyuanPreservePreLineBreaks(element, clone);
     siyuanCleanZhihu(clone,document.URL);
     fixInvalidNesting(clone);
     const sourceImages = element.matches?.("img") ? [element] : Array.from(element.querySelectorAll("img"));
@@ -1547,6 +1575,7 @@ async function siyuanCaptureElement(element,tabId) {
 }
 function siyuanCreateFullDOMClone() {
     const clonedDoc = document.cloneNode(true);
+    siyuanPreservePreLineBreaks(document.body, clonedDoc.body);
     clonedDoc.querySelectorAll("script,style,noscript,template,link[rel='stylesheet'],#siyuanmessage,#siyuan-dom-picker-banner,#siyuan-dom-picker-highlight").forEach(node=>node.remove());
     clonedDoc.querySelectorAll("[hidden],[aria-hidden='true']").forEach(node=>node.remove());
     clonedDoc.querySelectorAll("input,textarea,select,button").forEach(node=>node.remove());

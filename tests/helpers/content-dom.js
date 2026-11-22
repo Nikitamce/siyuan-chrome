@@ -45,7 +45,8 @@ function createContentDOM(t, html, {url = "https://example.com/article", expSpan
         "\nwindow.clipArticle = siyuanGetReadability;" +
         "window.clipSelection = eventDispatcher;" +
         "window.extractConversation = siyuanExtractConversation;" +
-        "window.sendUpload = siyuanSendUpload;"
+        "window.sendUpload = siyuanSendUpload;" +
+        "window.siyuanPreservePreLineBreaks = siyuanPreservePreLineBreaks;"
     );
     return {window, document: window.document, messages};
 }
