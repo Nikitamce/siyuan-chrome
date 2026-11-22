@@ -49,6 +49,9 @@
       },
       "description": "__MSG_command_copy_to_siyuan__"
     },
+    "send-selection": {
+      "description": "__MSG_command_send_selection__"
+    },
     "send-to-siyuan": {
       "suggested_key": {
         "default": "Ctrl+Shift+S",

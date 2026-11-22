@@ -161,3 +161,65 @@ test("popup.css clamps dimensions to viewport so 125%+ global zoom never clips c
     assert.match(css, /width:\s*min\(var\(--popup-width\),\s*100vw\)/);
     assert.match(css, /\.popup__mode-select\s*\{/);
 });
+
+test("DeepSeek, Perplexity and Grok conversation adapters preserve speaker roles", t => {
+    const cases = [
+        {
+            url: "https://chat.deepseek.com/a/chat/1",
+            adapter: "DeepSeek",
+            html: `<main><div class="ds-message">User prompt</div><div class="ds-message"><div class="ds-markdown"><p>DeepSeek answer</p></div></div></main>`,
+        },
+        {
+            url: "https://www.perplexity.ai/search/1",
+            adapter: "Perplexity",
+            html: `<main><div data-testid="user-message">Question</div><div data-testid="answer"><div class="prose"><p>Answer</p></div></div></main>`,
+        },
+        {
+            url: "https://grok.com/chat/1",
+            adapter: "Grok",
+            html: `<main><div data-message-author-role="user"><div class="message-bubble">Hi Grok</div></div><div data-message-author-role="assistant"><div class="markdown"><p>Hello</p></div></div></main>`,
+        },
+    ];
+    for (const item of cases) {
+        const {window} = createContentDOM(t, item.html, {url: item.url});
+        const result = window.extractConversation();
+        assert.ok(result, item.adapter);
+        assert.equal(result.adapter, item.adapter);
+        assert.deepEqual(Array.from(result.turns, turn => turn.role), ["user", "assistant"]);
+    }
+});
+
+test("selection and conversation clips set skipReload so open tabs are not reloaded", async t => {
+    const html = `<main><user-query><div class="query-text">Hello</div></user-query><model-response><div class="response-content"><p>World</p></div></model-response></main>`;
+    const {window, messages} = createContentDOM(t, html, {url: "https://gemini.google.com/app"});
+    await window.clipArticle(1, "article");
+    const convUpload = messages.find(m => m.func === "upload-copy");
+    assert.equal(convUpload.data.skipReload, true);
+
+    messages.length = 0;
+    await window.clipSelection({func: "send-selection", tabId: 2, selectionText: "Keep my tab"});
+    const selUpload = messages.find(m => m.func === "upload-copy");
+    assert.equal(selUpload.data.skipReload, true);
+});
+
+test("all 21 bundled locales include new keys and Russian tags_placeholder is fixed", () => {
+    const {readdirSync} = require("node:fs");
+    const required = [
+        "send_selection",
+        "command_send_selection",
+        "capture_selection",
+        "picker_parent",
+        "picker_reselect",
+        "tip_copy_ok",
+        "exp_auto_scroll",
+    ];
+    for (const lang of readdirSync(path.join(root, "_locales"))) {
+        const messages = JSON.parse(readFileSync(path.join(root, "_locales", lang, "messages.json"), "utf8"));
+        for (const key of required) {
+            assert.ok(messages[key]?.message?.trim(), `${lang}:${key}`);
+        }
+    }
+    const ru = JSON.parse(readFileSync(path.join(root, "_locales/ru/messages.json"), "utf8"));
+    assert.match(ru.tags_placeholder.message, /запятые/i);
+});
+

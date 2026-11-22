@@ -162,18 +162,27 @@
     "message": "なし"
   },
   "send_selection": {
-    "message": "Send selection to SiYuan"
+    "message": "選択範囲を SiYuan に送信"
   },
   "capture_selection": {
-    "message": "Selected text"
+    "message": "選択したテキスト"
   },
   "picker_parent": {
-    "message": "Parent (↑)"
+    "message": "親要素 (↑)"
   },
   "picker_reselect": {
-    "message": "Re-select"
+    "message": "再選択"
   },
   "tip_copy_ok": {
-    "message": "Copied to clipboard"
+    "message": "クリップボードにコピーしました"
+  },
+  "command_send_selection": {
+    "message": "選択したテキストを SiYuan に保存"
+  },
+  "exp_auto_scroll": {
+    "message": "クリップ前にページを自動スクロール*"
+  },
+  "tip_conversation_not_supported": {
+    "message": "会話モードは Gemini、ChatGPT、Claude、DeepSeek、Perplexity、Grok のみ対応しています。"
   }
 }

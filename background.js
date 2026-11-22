@@ -61,6 +61,11 @@ chrome.commands.onCommand.addListener(function (command) {
                 tabId: tab.id,
                 srcUrl: undefined,
             });
+        } else if (command === "send-selection") {
+            safeTabsSendMessage(tab.id, {
+                func: "send-selection",
+                tabId: tab.id,
+            });
         } else if (command === "send-to-siyuan") {
             safeTabsSendMessage(tab.id,{func:"siyuanGetReadability",tabId:tab.id,mode:"article"});
         } else if (command === "pick-element") {
@@ -492,8 +497,8 @@ async function handleArticleClip(requestData, apiBase, copyData, fetchFileErr) {
         });
     }
 
-    // Keep partial-completion feedback visible instead of immediately reloading the page.
-    if (databaseAdded) {
+    // Keep partial-completion feedback visible and avoid reloading pages when live DOM was untouched.
+    if (databaseAdded && !requestData.skipReload) {
         safeTabsSendMessage(requestData.tabId, { func: "reload" });
     }
 }
@@ -610,7 +615,9 @@ async function handleUploadCopy(requestData) {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.func === "check-kernel") {
-        siyuanCheckKernel(request.data).then(sendResponse);
+        siyuanCheckKernel(request.data)
+            .then(sendResponse)
+            .catch(() => sendResponse({ ok: false, error: "tip_siyuan_kernel_unavailable" }));
         return true;
     }
     if (request.func === "upload-copy") {

@@ -162,18 +162,27 @@
     "message": "비어 있음"
   },
   "send_selection": {
-    "message": "Send selection to SiYuan"
+    "message": "선택 영역을 SiYuan으로 보내기"
   },
   "capture_selection": {
-    "message": "Selected text"
+    "message": "선택한 텍스트"
   },
   "picker_parent": {
-    "message": "Parent (↑)"
+    "message": "상위 요소 (↑)"
   },
   "picker_reselect": {
-    "message": "Re-select"
+    "message": "다시 선택"
   },
   "tip_copy_ok": {
-    "message": "Copied to clipboard"
+    "message": "클립보드에 복사되었습니다"
+  },
+  "command_send_selection": {
+    "message": "선택한 텍스트를 SiYuan에 저장"
+  },
+  "exp_auto_scroll": {
+    "message": "클리핑 전에 페이지 자동 스크롤*"
+  },
+  "tip_conversation_not_supported": {
+    "message": "대화 모드는 Gemini, ChatGPT, Claude, DeepSeek, Perplexity, Grok만 지원합니다."
   }
 }

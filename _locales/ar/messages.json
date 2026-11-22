@@ -162,18 +162,27 @@
     "message": "بدون"
   },
   "send_selection": {
-    "message": "Send selection to SiYuan"
+    "message": "إرسال التحديد إلى SiYuan"
   },
   "capture_selection": {
-    "message": "Selected text"
+    "message": "النص المحدد"
   },
   "picker_parent": {
-    "message": "Parent (↑)"
+    "message": "العنصر الأب (↑)"
   },
   "picker_reselect": {
-    "message": "Re-select"
+    "message": "إعادة التحديد"
   },
   "tip_copy_ok": {
-    "message": "Copied to clipboard"
+    "message": "تم النسخ إلى الحافظة"
+  },
+  "command_send_selection": {
+    "message": "حفظ النص المحدد إلى SiYuan"
+  },
+  "exp_auto_scroll": {
+    "message": "التمرير التلقائي قبل الحفظ*"
+  },
+  "tip_conversation_not_supported": {
+    "message": "يدعم وضع المحادثة Gemini وChatGPT وClaude وDeepSeek وPerplexity وGrok فقط."
   }
 }

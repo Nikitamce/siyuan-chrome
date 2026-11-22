@@ -162,18 +162,27 @@
     "message": "אין"
   },
   "send_selection": {
-    "message": "Send selection to SiYuan"
+    "message": "שלח בחירה אל SiYuan"
   },
   "capture_selection": {
-    "message": "Selected text"
+    "message": "טקסט נבחר"
   },
   "picker_parent": {
-    "message": "Parent (↑)"
+    "message": "אב (↑)"
   },
   "picker_reselect": {
-    "message": "Re-select"
+    "message": "בחר מחדש"
   },
   "tip_copy_ok": {
-    "message": "Copied to clipboard"
+    "message": "הועתק ללוח"
+  },
+  "command_send_selection": {
+    "message": "שמור טקסט נבחר ב-SiYuan"
+  },
+  "exp_auto_scroll": {
+    "message": "גלול אוטומטית לפני שמירה*"
+  },
+  "tip_conversation_not_supported": {
+    "message": "מצב שיחה תומך רק ב-Gemini, ChatGPT, Claude, DeepSeek, Perplexity ו-Grok."
   }
 }

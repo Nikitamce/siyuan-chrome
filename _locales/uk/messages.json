@@ -162,18 +162,27 @@
     "message": "Порожньо"
   },
   "send_selection": {
-    "message": "Send selection to SiYuan"
+    "message": "Надіслати виділене в SiYuan"
   },
   "capture_selection": {
-    "message": "Selected text"
+    "message": "Виділений текст"
   },
   "picker_parent": {
-    "message": "Parent (↑)"
+    "message": "Батьківський (↑)"
   },
   "picker_reselect": {
-    "message": "Re-select"
+    "message": "Вибрати знову"
   },
   "tip_copy_ok": {
-    "message": "Copied to clipboard"
+    "message": "Скопійовано в буфер обміну"
+  },
+  "command_send_selection": {
+    "message": "Зберегти виділений текст у SiYuan"
+  },
+  "exp_auto_scroll": {
+    "message": "Автопрокручування сторінки перед збереженням*"
+  },
+  "tip_conversation_not_supported": {
+    "message": "Режим діалогу підтримує лише Gemini, ChatGPT, Claude, DeepSeek, Perplexity та Grok."
   }
 }

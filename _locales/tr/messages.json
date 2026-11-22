@@ -162,18 +162,27 @@
     "message": "Boş"
   },
   "send_selection": {
-    "message": "Send selection to SiYuan"
+    "message": "Seçimi SiYuan'a gönder"
   },
   "capture_selection": {
-    "message": "Selected text"
+    "message": "Seçili metin"
   },
   "picker_parent": {
-    "message": "Parent (↑)"
+    "message": "Üst öğe (↑)"
   },
   "picker_reselect": {
-    "message": "Re-select"
+    "message": "Yeniden seç"
   },
   "tip_copy_ok": {
-    "message": "Copied to clipboard"
+    "message": "Panoya kopyalandı"
+  },
+  "command_send_selection": {
+    "message": "Seçili metni SiYuan'a kaydet"
+  },
+  "exp_auto_scroll": {
+    "message": "Kaydetmeden önce sayfayı otomatik kaydır*"
+  },
+  "tip_conversation_not_supported": {
+    "message": "Sohbet modu yalnızca Gemini, ChatGPT, Claude, DeepSeek, Perplexity ve Grok destekler."
   }
 }

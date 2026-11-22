@@ -175,5 +175,14 @@
   },
   "tip_copy_ok": {
     "message": "已複製到剪貼簿"
+  },
+  "command_send_selection": {
+    "message": "儲存選取文字到思源"
+  },
+  "exp_auto_scroll": {
+    "message": "剪藏前自動捲動頁面載入動態內容*"
+  },
+  "tip_conversation_not_supported": {
+    "message": "對話模式目前支援 Gemini、ChatGPT、Claude、DeepSeek、Perplexity 與 Grok。"
   }
 }

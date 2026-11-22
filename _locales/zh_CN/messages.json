@@ -175,5 +175,14 @@
   },
   "tip_copy_ok": {
     "message": "已复制到剪贴板"
+  },
+  "command_send_selection": {
+    "message": "保存选中文本到思源"
+  },
+  "exp_auto_scroll": {
+    "message": "剪藏前自动滚动页面加载动态内容*"
+  },
+  "tip_conversation_not_supported": {
+    "message": "对话模式目前支持 Gemini、ChatGPT、Claude、DeepSeek、Perplexity 和 Grok。其他网站请使用“主要文章”或“完整页面 DOM”。"
   }
 }

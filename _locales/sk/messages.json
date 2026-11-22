@@ -162,18 +162,27 @@
     "message": "Prázdne"
   },
   "send_selection": {
-    "message": "Send selection to SiYuan"
+    "message": "Odoslať výber do SiYuan"
   },
   "capture_selection": {
-    "message": "Selected text"
+    "message": "Vybraný text"
   },
   "picker_parent": {
-    "message": "Parent (↑)"
+    "message": "Nadradený (↑)"
   },
   "picker_reselect": {
-    "message": "Re-select"
+    "message": "Vybrať znova"
   },
   "tip_copy_ok": {
-    "message": "Copied to clipboard"
+    "message": "Skopírované do schránky"
+  },
+  "command_send_selection": {
+    "message": "Uložiť vybraný text do SiYuan"
+  },
+  "exp_auto_scroll": {
+    "message": "Automaticky posunúť stránku pred uložením*"
+  },
+  "tip_conversation_not_supported": {
+    "message": "Režim konverzácie podporuje iba Gemini, ChatGPT, Claude, DeepSeek, Perplexity a Grok."
   }
 }

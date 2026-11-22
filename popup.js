@@ -282,14 +282,20 @@ function renderPopup(items) {
                 return;
             }
             const mode = document.getElementById("captureMode")?.value || "article";
-            if (mode === "selection") {
-                chrome.tabs.sendMessage(tab.id, { func: "send-selection", tabId: tab.id });
-            } else {
-                chrome.tabs.sendMessage(tab.id, { func: "siyuanGetReadability", tabId: tab.id, mode });
-            }
-            setTimeout(() => {
-                sendBtn.disabled = false;
-            }, 600);
+            const message = mode === "selection"
+                ? { func: "send-selection", tabId: tab.id }
+                : { func: "siyuanGetReadability", tabId: tab.id, mode };
+            chrome.tabs.sendMessage(tab.id, message, () => {
+                if (chrome.runtime.lastError) {
+                    console.warn("Could not send SiYuan clip message:", chrome.runtime.lastError.message);
+                    setSendBlock(siyuanGetMessage("tip_first_time"));
+                    sendBtn.disabled = false;
+                    return;
+                }
+                setTimeout(() => {
+                    sendBtn.disabled = false;
+                }, 600);
+            });
         });
     });
 
@@ -599,6 +605,7 @@ function renderPopup(items) {
         ["exp_list_doc_tree", "expListDocTree"],
         ["exp_open_after_clip", "expOpenAfterClip"],
         ["exp_svg_to_img", "expSvgToImg"],
+        ["exp_auto_scroll", "expAutoScroll"],
     ]) {
         expGroup.insertAdjacentHTML("beforeend", switchRowHtml(labelKey, id));
         const input = expGroup.querySelector("#" + id);

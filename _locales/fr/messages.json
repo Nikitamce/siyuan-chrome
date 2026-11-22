@@ -162,18 +162,27 @@
     "message": "Aucun"
   },
   "send_selection": {
-    "message": "Send selection to SiYuan"
+    "message": "Envoyer la sélection vers SiYuan"
   },
   "capture_selection": {
-    "message": "Selected text"
+    "message": "Texte sélectionné"
   },
   "picker_parent": {
     "message": "Parent (↑)"
   },
   "picker_reselect": {
-    "message": "Re-select"
+    "message": "Resélectionner"
   },
   "tip_copy_ok": {
-    "message": "Copied to clipboard"
+    "message": "Copié dans le presse-papiers"
+  },
+  "command_send_selection": {
+    "message": "Enregistrer le texte sélectionné dans SiYuan"
+  },
+  "exp_auto_scroll": {
+    "message": "Faire défiler automatiquement avant la capture*"
+  },
+  "tip_conversation_not_supported": {
+    "message": "Le mode conversation prend uniquement en charge Gemini, ChatGPT, Claude, DeepSeek, Perplexity et Grok."
   }
 }

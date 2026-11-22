@@ -162,18 +162,27 @@
     "message": "Kosong"
   },
   "send_selection": {
-    "message": "Send selection to SiYuan"
+    "message": "Kirim pilihan ke SiYuan"
   },
   "capture_selection": {
-    "message": "Selected text"
+    "message": "Teks terpilih"
   },
   "picker_parent": {
-    "message": "Parent (↑)"
+    "message": "Induk (↑)"
   },
   "picker_reselect": {
-    "message": "Re-select"
+    "message": "Pilih ulang"
   },
   "tip_copy_ok": {
-    "message": "Copied to clipboard"
+    "message": "Disalin ke papan klip"
+  },
+  "command_send_selection": {
+    "message": "Simpan teks terpilih ke SiYuan"
+  },
+  "exp_auto_scroll": {
+    "message": "Gulir halaman otomatis sebelum menyimpan*"
+  },
+  "tip_conversation_not_supported": {
+    "message": "Mode percakapan hanya mendukung Gemini, ChatGPT, Claude, DeepSeek, Perplexity, dan Grok."
   }
 }

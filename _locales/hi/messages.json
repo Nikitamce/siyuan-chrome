@@ -162,18 +162,27 @@
     "message": "खाली"
   },
   "send_selection": {
-    "message": "Send selection to SiYuan"
+    "message": "चयनित टेक्स्ट SiYuan में भेजें"
   },
   "capture_selection": {
-    "message": "Selected text"
+    "message": "चयनित टेक्स्ट"
   },
   "picker_parent": {
-    "message": "Parent (↑)"
+    "message": "पैरेंट (↑)"
   },
   "picker_reselect": {
-    "message": "Re-select"
+    "message": "फिर से चुनें"
   },
   "tip_copy_ok": {
-    "message": "Copied to clipboard"
+    "message": "क्लिपबोर्ड पर कॉपी किया गया"
+  },
+  "command_send_selection": {
+    "message": "चयनित टेक्स्ट SiYuan में सहेजें"
+  },
+  "exp_auto_scroll": {
+    "message": "क्लिप करने से पहले पेज ऑटो-स्क्रॉल करें*"
+  },
+  "tip_conversation_not_supported": {
+    "message": "वार्तालाप मोड केवल Gemini, ChatGPT, Claude, DeepSeek, Perplexity और Grok का समर्थन करता है।"
   }
 }

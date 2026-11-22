@@ -219,7 +219,7 @@
     "message": "Block selected. Press Arrow Up to choose its parent container, then Enter or Save."
   },
   "tip_conversation_not_supported": {
-    "message": "Conversation mode supports Gemini, ChatGPT, and Claude only. Use Article or Entire page for this website."
+    "message": "Conversation mode supports Gemini, ChatGPT, Claude, DeepSeek, Perplexity, and Grok only. Use Article or Entire page for this website."
   },
   "send_selection": {
     "message": "Send selection to SiYuan"
@@ -235,5 +235,11 @@
   },
   "tip_copy_ok": {
     "message": "Copied to clipboard"
+  },
+  "command_send_selection": {
+    "message": "Save selected text to SiYuan"
+  },
+  "exp_auto_scroll": {
+    "message": "Auto-scroll page before clipping*"
   }
 }

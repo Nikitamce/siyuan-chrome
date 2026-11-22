@@ -162,18 +162,27 @@
     "message": "ว่างเปล่า"
   },
   "send_selection": {
-    "message": "Send selection to SiYuan"
+    "message": "ส่งข้อความที่เลือกไปยัง SiYuan"
   },
   "capture_selection": {
-    "message": "Selected text"
+    "message": "ข้อความที่เลือก"
   },
   "picker_parent": {
-    "message": "Parent (↑)"
+    "message": "องค์ประกอบหลัก (↑)"
   },
   "picker_reselect": {
-    "message": "Re-select"
+    "message": "เลือกใหม่"
   },
   "tip_copy_ok": {
-    "message": "Copied to clipboard"
+    "message": "คัดลอกไปยังคลิปบอร์ดแล้ว"
+  },
+  "command_send_selection": {
+    "message": "บันทึกข้อความที่เลือกลงใน SiYuan"
+  },
+  "exp_auto_scroll": {
+    "message": "เลื่อนหน้าอัตโนมัติก่อนบันทึก*"
+  },
+  "tip_conversation_not_supported": {
+    "message": "โหมดการสนทนารองรับเฉพาะ Gemini, ChatGPT, Claude, DeepSeek, Perplexity และ Grok"
   }
 }

@@ -88,7 +88,7 @@ const eventDispatcher = async (request, sender, sendResponse) => {
                 siteName: location.hostname,
                 excerpt: (tempElement.innerText || tempElement.textContent || "").trim().slice(0, 240),
             };
-            siyuanSendUpload(tempElement, request.tabId, request.srcUrl, "article", article, window.location.href, clipSettings);
+            siyuanSendUpload(tempElement, request.tabId, request.srcUrl, "article", article, window.location.href, clipSettings, {skipReload: true});
         } else {
             siyuanSendUpload(tempElement, request.tabId, request.srcUrl, "part", undefined, undefined, clipSettings);
         }
@@ -1179,7 +1179,7 @@ const siyuanDetectImageMimeType = async (blob, fallbackType) => {
     return fallbackType || blob.type || "application/octet-stream";
 };
 
-const siyuanSendUpload = async (tempElement, tabId, srcUrl, type, article, href, clipItems) => {
+const siyuanSendUpload = async (tempElement, tabId, srcUrl, type, article, href, clipItems, options = {}) => {
     siyuanNormalizeClipMath(tempElement);
     siyuanNormalizeClipCodeBlocks(tempElement);
     siyuanNormalizeClipBlockStructure(tempElement);
@@ -1349,6 +1349,7 @@ const siyuanSendUpload = async (tempElement, tabId, srcUrl, type, article, href,
         selectedDatabaseBlockID: items.selectedDatabaseBlockID,
         selectedDatabaseViewID: items.selectedDatabaseViewID,
         selectedDatabaseTemplateID: items.selectedDatabaseTemplateID,
+        skipReload: !!options.skipReload,
     };
     if (srcList.length > 0) {
         void siyuanShowTipByKey("tip_clipping");
@@ -1542,7 +1543,7 @@ async function siyuanCaptureElement(element,tabId) {
         siteName:location.hostname,
         excerpt:(element.innerText || element.textContent || "").trim().slice(0,240),
     };
-    siyuanSendUpload(wrapper,tabId,undefined,"article",article,location.href,settings);
+    siyuanSendUpload(wrapper,tabId,undefined,"article",article,location.href,settings,{skipReload:true});
 }
 function siyuanCreateFullDOMClone() {
     const clonedDoc = document.cloneNode(true);
@@ -1596,8 +1597,73 @@ function siyuanGetConversationAdapter() {
             content: element => element.querySelector(".font-claude-message, .prose, [class*='message-content']") || element,
         };
     }
+    if (host === "chat.deepseek.com") {
+        const turns = Array.from(document.querySelectorAll('[data-role="user"], [data-role="assistant"], .ds-message'));
+        if (!turns.length) return null;
+        return {
+            name: "DeepSeek", turns,
+            role: element => {
+                const explicit = element.getAttribute("data-role");
+                if (explicit === "user" || explicit === "assistant") return explicit;
+                return element.querySelector(".ds-markdown") ? "assistant" : "user";
+            },
+            content: element => element.querySelector(".ds-markdown, .ds-message-content") || element,
+        };
+    }
+    if (host === "perplexity.ai" || host === "www.perplexity.ai") {
+        const turns = Array.from(document.querySelectorAll('[data-testid="user-message"], [data-testid="answer"], h1.query-text, .prose'));
+        if (!turns.length) return null;
+        return {
+            name: "Perplexity", turns,
+            role: element => {
+                const id = element.getAttribute("data-testid") || "";
+                if (id === "user-message" || element.matches("h1.query-text")) return "user";
+                if (id === "answer" || element.matches(".prose")) return "assistant";
+                return "";
+            },
+            content: element => element.querySelector(".prose") || element,
+        };
+    }
+    if (host === "grok.com" || host === "www.grok.com") {
+        const turns = Array.from(document.querySelectorAll('[data-message-author-role], [data-testid="user-message"], [data-testid="assistant-message"]'));
+        if (!turns.length) return null;
+        return {
+            name: "Grok", turns,
+            role: element => {
+                const attr = element.getAttribute("data-message-author-role") || element.getAttribute("data-testid") || "";
+                if (/user/i.test(attr)) return "user";
+                if (/assistant|model/i.test(attr)) return "assistant";
+                return "";
+            },
+            content: element => element.querySelector(".markdown, .response-content-markdown, .message-bubble") || element,
+        };
+    }
     return null;
 }
+
+const siyuanAutoScrollPage = async () => {
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    const viewportHeight = Math.max(window.innerHeight || 800, 400);
+    const maxSteps = 12;
+    try {
+        let lastHeight = 0;
+        for (let step = 0; step < maxSteps; step++) {
+            const docHeight = Math.max(
+                document.body?.scrollHeight || 0,
+                document.documentElement?.scrollHeight || 0
+            );
+            const targetY = Math.min(docHeight, (step + 1) * viewportHeight);
+            window.scrollTo(0, targetY);
+            await new Promise(resolve => setTimeout(resolve, 180));
+            if (targetY >= docHeight && docHeight === lastHeight) break;
+            lastHeight = docHeight;
+        }
+    } finally {
+        window.scrollTo(scrollX, scrollY);
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    }
+};
 
 function siyuanExtractConversation() {
     const adapter = siyuanGetConversationAdapter();
@@ -1607,7 +1673,7 @@ function siyuanExtractConversation() {
         const role = adapter.role(element);
         if (role !== "user" && role !== "assistant") continue;
         const parentTurn = element.parentElement?.closest(
-            "user-query, model-response, [data-message-author-role], [data-testid*='user-message'], [data-testid*='assistant-message'], [data-testid='chat-message']"
+            "user-query, model-response, [data-message-author-role], [data-testid*='user-message'], [data-testid*='assistant-message'], [data-testid='chat-message'], [data-testid='answer'], [data-role='user'], [data-role='assistant'], .ds-message"
         );
         if (parentTurn && adapter.turns.includes(parentTurn)) continue;
         const sourceNode = adapter.content(element);
@@ -1667,6 +1733,9 @@ const siyuanGetReadability = async (tabId, mode = "article") => {
         });
 
         // 重构并合并 Readability 前处理 https://github.com/siyuan-note/siyuan/issues/13306
+        if (clipSettings.expAutoScroll) {
+            await siyuanAutoScrollPage();
+        }
         await siyuanPrepareYuqueCards(document);
         const conversation = (mode === "conversation" || mode === "article") ? siyuanExtractConversation() : null;
         if (mode === "conversation" && !conversation) {
@@ -1715,7 +1784,8 @@ const siyuanGetReadability = async (tabId, mode = "article") => {
         // Keep structural containers so the kernel can convert separate page blocks into separate SiYuan blocks.
         simplifyNestedTags(tempElement, "SPAN");
         // console.log(article)
-        siyuanSendUpload(tempElement, tabId, undefined, "article", article, window.location.href, clipSettings);
+        const skipReload = !!(conversation || mode === "dom");
+        siyuanSendUpload(tempElement, tabId, undefined, "article", article, window.location.href, clipSettings, {skipReload});
     } catch (e) {
         console.error(e);
         siyuanShowTip(e.message, undefined, 7 * 1000);
